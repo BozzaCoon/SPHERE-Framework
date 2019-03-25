@@ -470,70 +470,6 @@ class Service extends AbstractService
 
     /**
      * @param IFormInterface $Form
-     * @param array $Group
-     * @param Pipeline|null $pipelineSuccess
-     * @return IFormInterface|string
-     */
-    public function createGroup(
-        IFormInterface $Form,
-        $Group,
-        Pipeline $pipelineSuccess = null
-    )
-    {
-
-        /**
-         * Service
-         */
-        if ($Group === null) {
-            return $Form;
-        }
-
-        $Error = false;
-
-        if (!isset($Group['Name']) || empty($Group['Name'])) {
-            $Form->setError('Group[Name]', 'Bitte geben Sie einen Namen ein');
-            $Error = true;
-        } else {
-            if ((Account::useService()->getGroupByName($Group['Name']))) {
-                $Form->setError('Group[Name]', 'Der angegebene Name wird bereits verwendet');
-                $Error = true;
-            }
-        }
-        if (!isset($Group['Description'])) {
-            $Form->setError('Group[Description]', 'Bitte geben Sie eine Beschreibung ein');
-            $Error = true;
-        }
-
-        if ($Error) {
-            return $Form . new Notify(
-                    'Benutzergruppe konnte nicht angelegt werden',
-                    'Bitte füllen Sie die benötigten Felder korrekt aus',
-                    Notify::TYPE_WARNING,
-                    5000
-                );
-        } else {
-
-            $tblConsumer = Consumer::useService()->getConsumerBySession();
-            if ($tblConsumer) {
-                if ($this->insertGroup($Group['Name'], $Group['Description'], $tblConsumer)) {
-                    return $Form. new Notify(
-                            'Benutzergruppe ' . $Group['Name'],
-                            'Erfolgreich angelegt',
-                            Notify::TYPE_SUCCESS
-                        ).($pipelineSuccess ? $pipelineSuccess : '');
-                }
-            }
-            return $Form . new Notify(
-                    'Benutzergruppe ' . $Group['Name'],
-                    'Konnte nicht angelegt werden',
-                    Notify::TYPE_DANGER,
-                    5000
-                );
-        }
-    }
-
-    /**
-     * @param IFormInterface $Form
      * @param TblGroup $tblGroup
      * @param array $Group
      * @param Pipeline|null $pipelineSuccess
@@ -607,7 +543,7 @@ class Service extends AbstractService
      *
      * @return TblGroup
      */
-    public function insertGroup($Name, $Description, TblConsumer $tblConsumer = null)
+    public function createGroup($Name, $Description, TblConsumer $tblConsumer = null)
     {
 
         return (new Data($this->getBinding()))->createGroup($Name, $Description, $tblConsumer);

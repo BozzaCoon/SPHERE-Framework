@@ -9,6 +9,7 @@ use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblAuthentication;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblAuthorization;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblGroup;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblGroupRole;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblIdentification;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblSession;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblSetting;
@@ -95,6 +96,16 @@ class Data extends AbstractData
                     $this->setSettingByAccount($tblAccount, 'Surface', 1);
                 }
         */
+
+        /**
+         * Benutzergruppen vordefiniert (Mandanten unabhängig)
+         **/
+//        $tblGroup = $this->createGroup('Schulleiter', 'Unfasst alle Rechte, denen Schulleitern zugewiesen werden sollte.');
+//        createGroupRole =
+
+//        $tblGroup = $this->createGroup('Sekretariat', 'Unfasst alle Rechte, denen das Sekretariat zugewiesen werden sollte.');
+//        $tblGroup = $this->createGroup('Lehrer', 'Unfasst alle Rechte, denen Lehrern zugewiesen werden sollten.');
+//        $tblGroup = $this->createGroup('Mitarbeiter', 'Unfasst alle Rechte, denen Mitarbeitern zugewiesen werden sollten.');
     }
 
     /**
@@ -114,6 +125,30 @@ class Data extends AbstractData
             $Entity->setName($Name);
             $Entity->setDescription($Description);
             $Entity->setServiceTblConsumer($tblConsumer);
+            $Manager->saveEntity($Entity);
+            Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
+        }
+        return $Entity;
+    }
+
+    /**
+     * @param TblGroup $tblGroup
+     * @param TblRole  $tblRole
+     *
+     * @return TblGroupRole
+     */
+    public function createGroupRole(TblGroup $tblGroup, TblRole $tblRole)
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        $Entity = $Manager->getEntity('TblGroupRole')->findOneBy(array(
+            TblGroupRole::ATTR_TBL_GROUP => $tblGroup->getId(),
+            TblGroupRole::ATTR_SERVICE_TBL_ROLE => $tblRole->getId(),
+        ));
+        if (null === $Entity) {
+            $Entity = new TblGroupRole();
+            $Entity->setTblGroup($tblGroup);
+            $Entity->setServiceTblRole($tblRole);
             $Manager->saveEntity($Entity);
             Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
         }

@@ -19,7 +19,7 @@ class TblGroupRole extends Element
 {
 
     const ATTR_TBL_GROUP = 'tblGroup';
-    const SERVICE_TBL_ROLE = 'serviceTblRole';
+    const ATTR_SERVICE_TBL_ROLE = 'serviceTblRole';
 
     /**
      * @Column(type="bigint")

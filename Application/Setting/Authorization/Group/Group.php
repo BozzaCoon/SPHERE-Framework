@@ -2,7 +2,6 @@
 namespace SPHERE\Application\Setting\Authorization\Group;
 
 use SPHERE\Application\IModuleInterface;
-use SPHERE\Application\Setting\Authorization\Account\Frontend;
 use SPHERE\Common\Frontend\Icon\Repository\PersonGroup;
 use SPHERE\Common\Main;
 use SPHERE\Common\Window\Navigation\Link;

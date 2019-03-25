@@ -2,22 +2,24 @@
 namespace SPHERE\Application\Setting\Authorization\Group;
 
 use SPHERE\Application\Api\Platform\Gatekeeper\ApiUserGroup;
-use SPHERE\Common\Frontend\Ajax\Emitter\ServerEmitter;
-use SPHERE\Common\Frontend\Ajax\Pipeline;
-use SPHERE\Common\Frontend\Ajax\Receiver\BlockReceiver;
-use SPHERE\Common\Frontend\Ajax\Receiver\ModalReceiver;
-use SPHERE\Common\Frontend\Ajax\Template\Notify;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Account;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblGroup;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Consumer;
 use SPHERE\Common\Frontend\Form\Repository\Button\Close;
-use SPHERE\Common\Frontend\Icon\Repository\PersonGroup;
+use SPHERE\Common\Frontend\Icon\Repository\CogWheels;
+use SPHERE\Common\Frontend\Icon\Repository\Edit;
+use SPHERE\Common\Frontend\Icon\Repository\Pencil;
+use SPHERE\Common\Frontend\Icon\Repository\Plus;
 use SPHERE\Common\Frontend\Icon\Repository\PlusSign;
+use SPHERE\Common\Frontend\Icon\Repository\Remove;
 use SPHERE\Common\Frontend\IFrontendInterface;
-use SPHERE\Common\Frontend\Layout\Repository\Title;
-use SPHERE\Common\Frontend\Layout\Repository\Well;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutColumn;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutGroup;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutRow;
+use SPHERE\Common\Frontend\Link\Repository\Primary;
 use SPHERE\Common\Frontend\Link\Repository\Standard;
+use SPHERE\Common\Frontend\Table\Structure\TableData;
 use SPHERE\Common\Window\Stage;
 use SPHERE\System\Extension\Extension;
 
@@ -29,68 +31,83 @@ use SPHERE\System\Extension\Extension;
 class Frontend extends Extension implements IFrontendInterface
 {
 
-    public function frontendUserGroup()
+    /**
+     * @param array $Group
+     *
+     * @return Stage
+     */
+    public function frontendUserGroup($Group = array())
     {
         $Stage = new Stage('Benutzergruppen', 'Verwalten');
-        $Stage->setMessage('');
+        $Stage->addButton((new Primary('Benutzergruppe hinzufügen', ApiUserGroup::getEndpoint(), new Plus()))
+        ->ajaxPipelineOnClick(ApiUserGroup::pipelineShowUserGroup('create', $Group)));
 
-        $receiverStageContent = new BlockReceiver();
+//        $receiverGroupList = new BlockReceiver();
+        $receiverCreateModal = ApiUserGroup::getModalReceiver('create', new PlusSign() . ' Neue Benutzergruppe anlegen', new Close());
+        $receiverEditModal = ApiUserGroup::getModalReceiver('edit', new Pencil() . ' Benutzergruppe bearbeiten', new Close());
+        $receiverDestroyModal = ApiUserGroup::getModalReceiver('destroy', new Remove() . ' Benutzergruppe entfernen', new Close());
+//        $receiverModalEdit = new ModalReceiver( 'Gruppe bearbeiten', new Close() );
+//        $receiverModalDestroy = new ModalReceiver( 'Sind Sie sicher?' );
 
-        $receiverGroupList = new BlockReceiver();
-        $receiverModalCreate = new ModalReceiver( new PlusSign() . ' Neue Benutzergruppe anlegen', new Close() );
-        $receiverModalEdit = new ModalReceiver( 'Gruppe bearbeiten', new Close() );
-        $receiverModalDestroy = new ModalReceiver( 'Sind Sie sicher?' );
-
-        /**
-         * Create New UserGroup
-         */
-        $pipelineModalCreate = new Pipeline();
-        $emitterModalCreate = new ServerEmitter($receiverModalCreate, ApiUserGroup::getRoute());
-        $emitterModalCreate->setGetPayload(array(
-            ApiUserGroup::API_DISPATCHER => 'pieceCreateGroup',
-            'receiverGroupList' => $receiverGroupList->getIdentifier(),
-            'receiverModalCreate' => $receiverModalCreate->getIdentifier(),
-            'receiverModalEdit' => $receiverModalEdit->getIdentifier(),
-            'receiverModalDestroy' => $receiverModalDestroy->getIdentifier()
-        ));
-        $pipelineModalCreate->addEmitter($emitterModalCreate);
-
-        $Stage->addButton(
-            (new Standard('Neue Benutzergruppe anlegen','#', new PlusSign()))->ajaxPipelineOnClick( $pipelineModalCreate )
-        );
-
-        /**
-         * Show Table UserGroup
-         */
-        $pipelineGroupList = new Pipeline();
-        $emitterGroupList = new ServerEmitter($receiverGroupList, ApiUserGroup::getRoute());
-        $emitterGroupList->setGetPayload(array(
-            ApiUserGroup::API_DISPATCHER => 'pieceGroupList',
-            'receiverGroupList' => $receiverGroupList->getIdentifier(),
-            'receiverModalCreate' => $receiverModalCreate->getIdentifier(),
-            'receiverModalEdit' => $receiverModalEdit->getIdentifier(),
-            'receiverModalDestroy' => $receiverModalDestroy->getIdentifier()
-        ));
-        $pipelineGroupList->addEmitter($emitterGroupList);
-        $receiverGroupList->initContent($pipelineGroupList);
-
-        $receiverStageContent->initContent(
-            new Layout(array(
-                new LayoutGroup(array(
+        $Stage->setContent(
+            $receiverCreateModal
+            .$receiverEditModal
+            .$receiverDestroyModal
+            .ApiUserGroup::getServiceReceiver()
+            .new Layout(
+                new LayoutGroup(
                     new LayoutRow(
-                        new LayoutColumn(array(
-                            $receiverGroupList,
-                            $receiverModalCreate,
-                            $receiverModalEdit,
-                            $receiverModalDestroy
-                        ))
-                    ),
-                ), new Title(new PersonGroup() . ' Bestehende Benutzergruppen')),
-            ))
+                        new LayoutColumn(
+                            ApiUserGroup::getGroupTableReceiver($this->getGroupTable())
+                        )
+                    )
+                )
+            )
         );
-
-        $Stage->setContent( $receiverStageContent );
 
         return $Stage;
+    }
+
+    /**
+     * @return TableData
+     */
+    public function getGroupTable()
+    {
+        $tblGroupAll = Account::useService()->getGroupAll(
+            Consumer::useService()->getConsumerBySession()
+        );
+
+        $TableContent = array();
+        if ($tblGroupAll) {
+            array_walk($tblGroupAll, function (TblGroup $tblGroup) use (&$TableContent) {
+
+                $item['Name'] = $tblGroup->getName();
+                $item['Description'] = $tblGroup->getDescription();
+                $item['Role'] = '';
+                $item['Member'] = '';
+                $item['Option'] = (new Standard('', ApiUserGroup::getEndpoint(), new Edit()))
+                    ->ajaxPipelineOnClick(ApiUserGroup::pipelineShowUserGroup('edit', array(), $tblGroup->getId()))
+                .(new Standard('', ApiUserGroup::getEndpoint(), new CogWheels()))
+                .(new Standard('', ApiUserGroup::getEndpoint(), new Remove()))
+                ->ajaxPipelineOnClick(ApiUserGroup::pipelineDestroyGroup('destroy', $tblGroup->getId()));
+
+                array_push($TableContent, $item);
+            });
+        }
+
+        return new TableData(
+            $TableContent
+            , null, array(
+            'Name' => 'Name',
+            'Description' => 'Beschreibung',
+            'Role' => 'Rechte',
+            'Member' => 'Benutzer',
+            'Option' => ''
+        ), array(
+            "columnDefs" => array(
+                array("searchable" => false, "targets" => -1),
+                array("type" => "natural", "targets" => '_all')
+            )
+        ));
     }
 }
