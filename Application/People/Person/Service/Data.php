@@ -287,7 +287,7 @@ class Data extends AbstractData
     public function getPersonAllByFirstNameAndLastName($FirstName, $LastName)
     {
 
-        return $this->getCachedEntityListBy(__METHOD__, $this->getConnection()->getEntityManager(), 'TblPerson', array(
+        return $this->getForceEntityListBy(__METHOD__, $this->getConnection()->getEntityManager(), 'TblPerson', array(
             TblPerson::ATTR_FIRST_NAME => $FirstName,
             TblPerson::ATTR_LAST_NAME  => $LastName
         ));
@@ -308,13 +308,16 @@ class Data extends AbstractData
         $count = 0;
         foreach ($split as $item) {
             $count++;
+
             $or = $queryBuilder->expr()->orX();
             $or->add($queryBuilder->expr()->like('t.LastName', '?' . $count));
             $or->add($queryBuilder->expr()->like('t.FirstName', '?' . $count));
             $or->add($queryBuilder->expr()->like('t.SecondName', '?' . $count));
             $or->add($queryBuilder->expr()->like('t.CallName', '?' . $count));
-
             $and->add($or);
+
+            // SSW-591 keine gelöschten Personen anzeigen
+            $and->add($queryBuilder->expr()->isNull('t.EntityRemove'));
 
             $queryBuilder->setParameter($count, '%' . $item . '%');
         }

@@ -12,6 +12,29 @@ use MOC\V\Component\Document\Component\Parameter\Repository\FileParameter;
  */
 abstract class File extends Config
 {
+    /** @var $string $delimiter */
+    private $delimiter = null;
+
+    /** @var $string $delimiter */
+    private $headColumnLimitCsv = null;
+
+    /**
+     * @param $delimiter
+     */
+    public function setDelimiter($delimiter)
+    {
+        $this->delimiter = $delimiter;
+    }
+
+    /**
+     * @param string $HeaderMax (ColumnName in Excel like 'AE' or 'C')
+     * only first line will change his length
+     * necessary for CSV DateV export
+     */
+    public function setHeadColumnLimitCsv($HeaderMax = '')
+    {
+        $this->headColumnLimitCsv = $HeaderMax;
+    }
 
     /**
      * @param FileParameter               $Location
@@ -52,7 +75,11 @@ abstract class File extends Config
              * Find CSV Delimiter
              */
             if ('CSV' == $ReaderType) {
-                $Result = $this->getDelimiterType();
+                if( $this->delimiter === null ) {
+                    $Result = $this->getDelimiterType();
+                } else {
+                    $Result = $this->delimiter;
+                }
                 if ($Result) {
                     $Reader->setDelimiter($Result);
                 }
@@ -184,7 +211,23 @@ abstract class File extends Config
 
         if ($WriterType) {
             $Writer = \PHPExcel_IOFactory::createWriter($this->Source, $WriterType);
-            $Writer->save($Location);
+
+            /**
+             * Find CSV Delimiter
+             */
+            if ('CSV' == $WriterType) {
+                if( $this->delimiter !== null ) {
+                    $Writer->setDelimiter($this->delimiter);
+                }
+            }
+
+            if($this->headColumnLimitCsv && 'CSV' == $WriterType){
+                // updated save function for CSV Writer to manipulate first row
+                $Writer->save($Location, $this->headColumnLimitCsv);
+            } else {
+                $Writer->save($Location);
+            }
+
         } else {
             // @codeCoverageIgnoreStart
             throw new TypeFileException('No Writer for '.$Info->getExtension().' available!');

@@ -1,8 +1,6 @@
 <?php
 namespace SPHERE\Application\Billing\Accounting\Debtor\Service;
 
-//use Doctrine\DBAL\Schema\Schema;
-//use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\Table;
 use SPHERE\System\Database\Binding\AbstractSetup;
@@ -31,6 +29,7 @@ class Setup extends AbstractSetup
         $this->setTableDebtorNumber($Schema);
         $tblBankAccount = $this->setTableBankAccount($Schema);
         $tblBankReference = $this->setTableBankReference($Schema);
+        $this->setTableDebtorPeriodType($Schema);
         $this->setTableDebtorSelection($Schema, $tblBankAccount, $tblBankReference);
 
         /**
@@ -90,7 +89,22 @@ class Setup extends AbstractSetup
         $Table = $this->createTable($Schema, 'tblBankReference');
         $this->createColumn($Table, 'ReferenceNumber', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'ReferenceDate', self::FIELD_TYPE_DATETIME);
+        $this->createColumn($Table, 'Description', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'serviceTblPerson', self::FIELD_TYPE_BIGINT);
+
+        return $Table;
+    }
+
+    /**
+     * @param Schema $Schema
+     *
+     * @return Table
+     */
+    private function setTableDebtorPeriodType(Schema &$Schema)
+    {
+
+        $Table = $this->createTable($Schema, 'tblDebtorPeriodType');
+        $this->createColumn($Table, 'Name', self::FIELD_TYPE_STRING);
 
         return $Table;
     }
@@ -114,6 +128,9 @@ class Setup extends AbstractSetup
             $Table->addColumn('Value', 'decimal', array('precision' => 14, 'scale' => 4));
         }
         $this->createColumn($Table, 'serviceTblPaymentType', self::FIELD_TYPE_BIGINT, true);
+        $this->createColumn($Table, 'tblDebtorPeriodType', self::FIELD_TYPE_BIGINT, false, 1);
+        $this->createColumn($Table, 'FromDate', self::FIELD_TYPE_DATETIME, false, '2019-01-01 00:00:00');
+        $this->createColumn($Table, 'ToDate', self::FIELD_TYPE_DATETIME, true);
         $this->getConnection()->addForeignKey($Table, $tblBankAccount, true);
         $this->getConnection()->addForeignKey($Table, $tblBankReference, true);
 

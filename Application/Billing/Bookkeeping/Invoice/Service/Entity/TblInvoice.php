@@ -5,6 +5,8 @@ use Doctrine\ORM\Mapping\Cache;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\Table;
+use SPHERE\Application\Billing\Bookkeeping\Basket\Basket;
+use SPHERE\Application\Billing\Bookkeeping\Basket\Service\Entity\TblBasket;
 use SPHERE\Application\Billing\Bookkeeping\Invoice\Invoice;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
@@ -28,6 +30,7 @@ class TblInvoice extends Element
     const ATTR_BASKET_NAME = 'BasketName';
     const ATTR_SERVICE_TBL_PERSON_CAUSER = 'serviceTblPersonCauser';
     const ATTR_TBL_INVOICE_CREDITOR = 'tblInvoiceCreditor';
+    const ATTR_SERVICE_TBL_BASKET = 'serviceTblBasket';
 
     /**
      * @Column(type="string")
@@ -49,6 +52,10 @@ class TblInvoice extends Element
      * @Column(type="datetime")
      */
     protected $TargetTime;
+    /**
+     * @Column(type="datetime")
+     */
+    protected $BillTime;
     /**
      * @Column(type="string")
      */
@@ -73,6 +80,10 @@ class TblInvoice extends Element
      * @Column(type="bigint")
      */
     protected $tblInvoiceCreditor;
+    /**
+     * @Column(type="bigint")
+     */
+    protected $serviceTblBasket;
 
     /**
      * @return string
@@ -152,9 +163,11 @@ class TblInvoice extends Element
     }
 
     /**
+     * @param string $Format
+     *
      * @return bool|string
      */
-    public function getTargetTime()
+    public function getTargetTime($Format = 'd.m.Y')
     {
 
         if(null === $this->TargetTime){
@@ -163,7 +176,7 @@ class TblInvoice extends Element
         /** @var \DateTime $InvoiceDate */
         $TargetDate = $this->TargetTime;
         if($TargetDate instanceof \DateTime){
-            return $TargetDate->format('d.m.Y');
+            return $TargetDate->format($Format);
         } else {
             return (string)$TargetDate;
         }
@@ -176,6 +189,44 @@ class TblInvoice extends Element
     {
 
         $this->TargetTime = $Date;
+    }
+
+    /**
+     * @param string $Format
+     *
+     * @return bool|string
+     */
+    public function getBillTime($Format = 'd.m.Y')
+    {
+
+        // Rechnungs Jahr
+        if(null !== $this->BillTime){
+            /** @var \DateTime $BillTime */
+            $BillTime = $this->BillTime;
+            if($BillTime instanceof \DateTime){
+                return $BillTime->format($Format);
+            }
+        }
+        // Fälligkeits Jahr
+        if(null !== $this->TargetTime){
+            /** @var \DateTime $TargetTime */
+            $TargetTime = $this->TargetTime;
+            if($TargetTime instanceof \DateTime){
+                return $TargetTime->format($Format);
+            }
+        }
+
+        // aktuelles Datum
+        return (new \DateTime())->format($Format);
+    }
+
+    /**
+     * @param \DateTime|null $Date
+     */
+    public function setBillTime(\DateTime $Date = null)
+    {
+
+        $this->BillTime = $Date;
     }
 
     /**
@@ -285,5 +336,27 @@ class TblInvoice extends Element
     public function setTblInvoiceCreditor(TblInvoiceCreditor $tblInvoiceCreditor)
     {
         $this->tblInvoiceCreditor = $tblInvoiceCreditor->getId();
+    }
+
+    /**
+     * @return bool|TblBasket
+     */
+    public function getServiceTblBasket()
+    {
+
+        if(null !== $this->serviceTblBasket){
+            return Basket::useService()->getBasketById($this->serviceTblBasket);
+        }
+        return false;
+
+    }
+
+    /**
+     * @param null|TblBasket $serviceTblBasket
+     */
+    public function setServiceTblBasket(TblBasket $serviceTblBasket = null)
+    {
+
+        $this->serviceTblBasket = ($serviceTblBasket ? $serviceTblBasket->getId() : null);
     }
 }

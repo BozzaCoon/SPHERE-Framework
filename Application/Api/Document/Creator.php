@@ -6,6 +6,8 @@ use MOC\V\Component\Document\Document as PdfDocument;
 use MOC\V\Component\Template\Component\IBridgeInterface;
 use MOC\V\Core\FileSystem\FileSystem;
 use SPHERE\Application\Api\Document\Standard\Repository\AccidentReport\AccidentReport;
+use SPHERE\Application\Api\Document\Standard\Repository\Billing\Billing;
+use SPHERE\Application\Api\Document\Standard\Repository\Billing\DocumentWarning;
 use SPHERE\Application\Api\Document\Standard\Repository\EnrollmentDocument;
 use SPHERE\Application\Api\Document\Standard\Repository\Gradebook\Gradebook;
 use SPHERE\Application\Api\Document\Standard\Repository\GradebookOverview;
@@ -18,7 +20,12 @@ use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\MultiStudent
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\PrimarySchool;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\SecondarySchool;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentTransfer;
+use SPHERE\Application\Billing\Bookkeeping\Balance\Balance;
+use SPHERE\Application\Billing\Bookkeeping\Invoice\Invoice;
+use SPHERE\Application\Billing\Inventory\Document\Service\Entity\TblDocument;
+use SPHERE\Application\Billing\Inventory\Item\Item;
 use SPHERE\Application\Document\Generator\Generator;
+use SPHERE\Application\Document\Generator\Repository\Frame;
 use SPHERE\Application\Document\Storage\FilePointer;
 use SPHERE\Application\Document\Storage\Storage;
 use SPHERE\Application\Education\Lesson\Division\Division;
@@ -26,6 +33,8 @@ use SPHERE\Application\Education\Lesson\Term\Term;
 use SPHERE\Application\Education\School\Type\Service\Entity\TblType;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
+use SPHERE\Application\Setting\Consumer\Responsibility\Responsibility;
+use SPHERE\Application\Setting\Consumer\Responsibility\Service\Entity\TblResponsibility;
 use SPHERE\Common\Window\Display;
 use SPHERE\Common\Window\Stage;
 use SPHERE\System\Extension\Extension;
@@ -121,7 +130,7 @@ class Creator extends Extension
      * @return Stage|string
      */
     public static function createMultiGradebookOverviewPdf($DivisionId, $paperOrientation = Creator::PAPERORIENTATION_LANDSCAPE
-        , $Redirect)
+        , $Redirect = true)
     {
 
         // Warteseite
@@ -141,11 +150,13 @@ class Creator extends Extension
             // Fieldpointer auf dem der Merge durchgeführt wird, (download)
             $MergeFile = Storage::createFilePointer('pdf');
 
+            $documentName = '';
             $PdfMerger = new PdfMerge();
             if(($tblPersonList = Division::useService()->getStudentAllByDivision($tblDivision))){
                 $FileList = array();
                 foreach($tblPersonList as $tblPerson){
                     $Document = new GradebookOverview\GradebookOverview($tblPerson, $tblDivision);
+                    $documentName = $Document->getName();
                     // Tmp welches nicht sofort gelöscht werden soll (braucht man noch zum mergen)
                     $File = self::buildDummyFile($Document, array(), array(), $paperOrientation, false);
                     // hinzufügen für das mergen
@@ -164,7 +175,7 @@ class Creator extends Extension
                 }
             }
 
-            $FileName = $Document->getName() . ' Klasse ' . $tblDivision->getDisplayName() . ' ' . date("Y-m-d") . ".pdf";
+            $FileName = $documentName . ' Klasse ' . $tblDivision->getDisplayName() . ' ' . date("Y-m-d") . ".pdf";
 
             return self::buildDownloadFile($MergeFile, $FileName);
         }
@@ -331,17 +342,11 @@ class Creator extends Extension
             if ($DocumentName == 'PasswordChange') {
                 $Document = new PasswordChange($Data);
             }
-            if ($DocumentName == 'MultiPassword') {
-                $Document = new MultiPassword($Data);
-            }
 
             if ($Document) {
                 $File = self::buildDummyFile($Document, array(), array(), $paperOrientation);
 
                 $FileName = $Document->getName().'_'.date("Y-m-d").".pdf";
-                if ($DocumentName == 'MultiPassword') {
-                    $FileName = $Document->getName().".pdf";
-                }
 
                 return self::buildDownloadFile($File, $FileName);
             }
@@ -469,5 +474,280 @@ class Creator extends Extension
         }
 
         return new Stage('Notenbuch', 'Konnte nicht erstellt werden.');
+    }
+
+    /**
+     * @param $Data
+     * @param string $paperOrientation
+     * @return Stage|string
+     * @throws \MOC\V\Core\FileSystem\Exception\FileSystemException
+     */
+    public static function createMultiPasswordPdf($Data, $paperOrientation = Creator::PAPERORIENTATION_PORTRAIT)
+    {
+
+        $multiPassword = new MultiPassword($Data);
+        $pageList = $multiPassword->getPageList();
+
+        if (!empty($pageList)) {
+            ini_set('memory_limit', '2G');
+            $PdfMerger = new PdfMerge();
+            $FileList = array();
+
+            foreach ($pageList as $page) {
+                // Create Tmp
+                $File = Storage::createFilePointer('pdf', 'SPHERE-Temporary-short', false);
+                $clone[] = clone $File;
+                // build before const is set (picture)
+                /** @var DomPdf $Document */
+                $Document = PdfDocument::getPdfDocument($File->getFileLocation());
+                $Document->setPaperOrientationParameter(new PaperOrientationParameter($paperOrientation));
+                $pdfDocument = new \SPHERE\Application\Document\Generator\Repository\Document();
+                $pdfDocument->addPage($page);
+                $pdfFrame = new Frame();
+                $pdfFrame->addDocument($pdfDocument);
+                $Document->setContent($pdfFrame->getTemplate());
+                $Document->saveFile(new FileParameter($File->getFileLocation()));
+                // hinzufügen für das mergen
+                $PdfMerger->addPDF($File);
+                // speichern der Files zum nachträglichem bereinigen
+                $FileList[] = $File;
+            }
+
+            $MergeFile = Storage::createFilePointer('pdf');
+            // mergen aller hinzugefügten PDF-Datein
+            $PdfMerger->mergePdf($MergeFile);
+
+            if(!empty($FileList)){
+                // aufräumen der Temp-Files
+                /** @var FilePointer $File */
+                foreach($FileList as $File){
+                    $File->setDestruct();
+                }
+            }
+
+            $FileName = $multiPassword->getName().".pdf";
+
+            return FileSystem::getStream(
+                $MergeFile->getRealPath(),
+                $FileName
+            )->__toString();
+        }
+
+        return new Stage('Account Export', 'Konnte nicht erstellt werden.');
+    }
+
+    /**
+     * @param array $Data
+     * @param bool $Redirect
+     *
+     * @return Display|Stage|string
+     */
+    public static function createBillingDocumentPdf($Data = array(), $Redirect = true)
+    {
+
+        if ($Redirect) {
+            return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
+                '/Api/Document/Standard/BillingDocument/Create',
+                array(
+                    'Data'   => $Data,
+                    'Redirect' => 0
+                )
+            );
+        }
+
+        if(($tblItem = Item::useService()->getItemById($Data['Item']))
+            && ($tblDocument = \SPHERE\Application\Billing\Inventory\Document\Document::useService()->getDocumentById($Data['Document']))
+        ) {
+            if (isset($Data['PersonId']) && ($tblPerson = Person::useService()->getPersonById($Data['PersonId']))) {
+                $PriceList = Balance::useService()->getPriceListByPerson(
+                    $tblItem,
+                    $Data['Year'],
+                    $Data['From'],
+                    $Data['To'],
+                    $tblPerson
+                );
+            } else {
+                $PriceList = Balance::useService()->getPriceListByItemAndYear(
+                    $tblItem,
+                    $Data['Year'],
+                    $Data['From'],
+                    $Data['To'],
+                    isset($Data['Division']) ? $Data['Division'] : '0',
+                    isset($Data['Group']) ? $Data['Group'] : '0'
+                );
+            }
+
+            if (!empty($PriceList)) {
+                $Data['CompanyAddress'] = $Data['CompanyStreet'] . '<br/>' . $Data['CompanyCity']
+                    . ($Data['CompanyDistrict'] ? '  OT ' . $Data['CompanyDistrict'] : '');
+
+                $template = new Billing($tblItem, $tblDocument, $Data);
+
+                ini_set('memory_limit', '2G');
+                $PdfMerger = new PdfMerge();
+                $FileList = array();
+                $countPdfs = 0;
+                if (isset($Data['List'])) {
+                    $list = $Data['List'] - 1;
+                    $isList = true;
+                } else {
+                    $list = 0;
+                    $isList = false;
+                }
+                foreach($PriceList as $DebtorId => $CauserList) {
+                    if (($tblPersonDebtor = Person::useService()->getPersonById($DebtorId))) {
+                        foreach ($CauserList as $CauserId => $Value) {
+                            if (($tblPersonCauser = Person::useService()->getPersonById($CauserId))) {
+                                $countPdfs++;
+                                // nur die Pdfs der ausgewählten Liste herunterladen
+                                if ($isList) {
+                                    $maxPdfPages = Balance::useFrontend()->getMaxPdfPages();
+                                    if ($countPdfs > $maxPdfPages * $list && $countPdfs <= $maxPdfPages * ($list + 1)) {
+                                        // werden hinzugefügt
+                                    } else {
+                                        continue;
+                                    }
+                                }
+
+                                if (isset($Value['Sum'])) {
+                                    $TotalPrice = number_format($Value['Sum'], 2, ',', '.') . ' €';
+                                } else {
+                                    $TotalPrice = '0,00 €';
+                                }
+
+                                $Content = $template->createSingleDocument(
+                                    $tblPersonDebtor, $tblPersonCauser, $TotalPrice
+                                );
+                                // Create Tmp
+                                $File = Storage::createFilePointer('pdf', 'SPHERE-Temporary-short', false);
+                                $clone[] = clone $File;
+                                // build before const is set (picture)
+                                /** @var DomPdf $Document */
+                                $Document = PdfDocument::getPdfDocument($File->getFileLocation());
+                                $Document->setContent($Content);
+                                $Document->saveFile(new FileParameter($File->getFileLocation()));
+                                // hinzufügen für das mergen
+                                $PdfMerger->addPDF($File);
+                                // speichern der Files zum nachträglichem bereinigen
+                                $FileList[] = $File;
+                            }
+                        }
+                    }
+                }
+
+                $MergeFile = Storage::createFilePointer('pdf');
+                // mergen aller hinzugefügten PDF-Datein
+                $PdfMerger->mergePdf($MergeFile);
+
+                if (!empty($FileList)) {
+                    // aufräumen der Temp-Files
+                    /** @var FilePointer $File */
+                    foreach ($FileList as $File) {
+                        $File->setDestruct();
+                    }
+                }
+
+                $FileName = 'Belegdruck_' . $tblItem->getName() . ($isList ? '_Liste_' . ($list + 1) : '') . '_' . date("Y-m-d") . ".pdf";
+
+                return FileSystem::getStream(
+                    $MergeFile->getRealPath(),
+                    $FileName
+                )->__toString();
+            }
+        }
+
+        return new Stage('Belegdruck', 'Konnte nicht erstellt werden.');
+    }
+
+    /**
+     * @param array $Data
+     * @param bool  $Redirect
+     *
+     * @return Display|Stage|string
+     */
+    public static function createBillingDocumentWarningPdf($Data = array(), $Redirect = true)
+    {
+
+        if ($Redirect) {
+            return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
+                '/Api/Document/Standard/BillingDocumentWarning/Create',
+                array(
+                    'Data' => $Data,
+                    'Redirect'  => 0
+                )
+            );
+        }
+
+        if(isset($Data['InvoiceItemDebtorId'])
+            && ($tblInvoiceItemDebtor = Invoice::useService()->getInvoiceItemDebtorById($Data['InvoiceItemDebtorId']))
+            && ($tblItem = $tblInvoiceItemDebtor->getServiceTblItem())
+            && ($tblDocument = \SPHERE\Application\Billing\Inventory\Document\Document::useService()->getDocumentByName(TblDocument::IDENT_MAHNBELEG, true))
+        ){
+
+            $Data['CompanyName'] = '';
+            $Data['CompanyExtendedName'] = '';
+            $Data['CompanyDistrict'] = '';
+            $Data['CompanyStreet'] = '';
+            $Data['CompanyCity'] = '';
+            $Data['Location'] = '';
+
+            if (($tblResponsibilityAll = Responsibility::useService()->getResponsibilityAll())) {
+                /** @var TblResponsibility $tblResponsibility */
+                $tblResponsibility = reset($tblResponsibilityAll);
+                if (($tblCompany = $tblResponsibility->getServiceTblCompany())) {
+                    $Data['CompanyName'] = $tblCompany->getName();
+                    $Data['CompanyExtendedName'] = $tblCompany->getExtendedName();
+                    if (($tblAddress = $tblCompany->fetchMainAddress())
+                        && ($tblCity = $tblAddress->getTblCity())
+                    ) {
+                        $Data['CompanyDistrict'] = $tblCity->getDistrict();
+                        $Data['CompanyStreet'] = $tblAddress->getStreetName() . ' ' . $tblAddress->getStreetNumber();
+                        $Data['CompanyCity'] = $tblCity->getCode() . ' ' . $tblCity->getName();
+                        $Data['Location'] = $tblCity->getName();
+                    }
+                }
+            }
+            $tblPersonDebtor = $tblInvoiceItemDebtor->getServiceTblPersonDebtor();
+            $tblInvoice = $tblInvoiceItemDebtor->getTblInvoice();
+            $tblPersonCauser = $tblInvoice->getServiceTblPersonCauser();
+
+            $InvoiceNumber = $tblInvoice->getInvoiceNumber();
+            $Data['InvoiceNumber'] = $InvoiceNumber;
+            $Data['BillTime'] = $tblInvoice->getBillTime('Y/m');
+            $Data['BillName'] = $tblInvoice->getBasketName();
+            $Data['Count'] = $tblInvoiceItemDebtor->getQuantity();
+            $Data['Price'] = $tblInvoiceItemDebtor->getPriceString();
+            $Data['SummaryPrice'] = $tblInvoiceItemDebtor->getSummaryPrice();
+            $Data['TargetTime'] = $tblInvoice->getTargetTime();
+
+            $Data['CompanyAddress'] = $Data['CompanyStreet'] . '<br/>' . $Data['CompanyCity']
+                . ($Data['CompanyDistrict'] ? '  OT ' . $Data['CompanyDistrict'] : '');
+
+            // Text aus Vorlage füllen
+            $tblDocumentInformationList = \SPHERE\Application\Billing\Inventory\Document\Document::useService()->getDocumentInformationAllByDocument($tblDocument);
+            foreach($tblDocumentInformationList as $tblDocumentInformation){
+                $Data[$tblDocumentInformation->getField()] = $tblDocumentInformation->getValue();
+            }
+
+            $template = new DocumentWarning($tblItem, $Data);
+
+            ini_set('memory_limit', '1G');
+            $Content = $template->createSingleDocument($tblPersonDebtor, $tblPersonCauser);
+
+            // Create Tmp
+            $File = Storage::createFilePointer('pdf');
+
+            // build before const is set (picture)
+            /** @var DomPdf $Document */
+            $Document = PdfDocument::getPdfDocument($File->getFileLocation());
+            $Document->setContent($Content);
+            $Document->saveFile(new FileParameter($File->getFileLocation()));
+
+            $FileName = 'Mahnung_' .$InvoiceNumber. date("Y-m-d").".pdf";
+
+            return FileSystem::getStream($File->getRealPath(), $FileName)->__toString();
+        }
+
+        return new Stage('Mahnung', 'Konnte nicht erstellt werden.');
     }
 }

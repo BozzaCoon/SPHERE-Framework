@@ -11,21 +11,16 @@ use SPHERE\Application\Billing\Inventory\Item\Item;
 use SPHERE\Application\Billing\Inventory\Setting\Service\Entity\TblSetting;
 use SPHERE\Application\Billing\Inventory\Setting\Setting;
 use SPHERE\Application\People\Group\Group;
+use SPHERE\Application\People\Group\Service\Entity\TblGroup;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\Setting\Consumer\Consumer;
-use SPHERE\Common\Frontend\Form\Repository\Button\Standard as StandardForm;
 use SPHERE\Common\Frontend\Form\Repository\Field\CheckBox;
-use SPHERE\Common\Frontend\Form\Repository\Field\SelectBox;
-use SPHERE\Common\Frontend\Form\Structure\Form;
-use SPHERE\Common\Frontend\Form\Structure\FormColumn;
-use SPHERE\Common\Frontend\Form\Structure\FormGroup;
-use SPHERE\Common\Frontend\Form\Structure\FormRow;
 use SPHERE\Common\Frontend\Icon\Repository\ChevronLeft;
 use SPHERE\Common\Frontend\Icon\Repository\Disable;
 use SPHERE\Common\Frontend\Icon\Repository\Edit;
+use SPHERE\Common\Frontend\Icon\Repository\Group as GroupIcon;
 use SPHERE\Common\Frontend\Icon\Repository\Info;
-use SPHERE\Common\Frontend\Icon\Repository\Listing as ListingIcon;
 use SPHERE\Common\Frontend\Icon\Repository\Minus;
 use SPHERE\Common\Frontend\Icon\Repository\Pencil;
 use SPHERE\Common\Frontend\Icon\Repository\Person as PersonIcon;
@@ -34,9 +29,9 @@ use SPHERE\Common\Frontend\Icon\Repository\Statistic;
 use SPHERE\Common\Frontend\Icon\Repository\Warning as WarningIcon;
 use SPHERE\Common\Frontend\IFrontendInterface;
 use SPHERE\Common\Frontend\Layout\Repository\Accordion;
-use SPHERE\Common\Frontend\Layout\Repository\Container;
 use SPHERE\Common\Frontend\Layout\Repository\Listing;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
+use SPHERE\Common\Frontend\Layout\Repository\PullClear;
 use SPHERE\Common\Frontend\Layout\Repository\PullRight;
 use SPHERE\Common\Frontend\Layout\Repository\Title;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
@@ -48,8 +43,9 @@ use SPHERE\Common\Frontend\Link\Repository\Standard;
 use SPHERE\Common\Frontend\Message\Repository\Warning;
 use SPHERE\Common\Frontend\Table\Structure\TableData;
 use SPHERE\Common\Frontend\Text\Repository\Bold;
-use SPHERE\Common\Frontend\Text\Repository\Center;
 use SPHERE\Common\Frontend\Text\Repository\Danger as DangerText;
+use SPHERE\Common\Frontend\Text\Repository\Muted;
+use SPHERE\Common\Frontend\Text\Repository\Small;
 use SPHERE\Common\Frontend\Text\Repository\Success as SuccessText;
 use SPHERE\Common\Frontend\Text\Repository\ToolTip;
 use SPHERE\Common\Frontend\Text\Repository\Warning as WarningText;
@@ -65,71 +61,74 @@ class Frontend extends Extension implements IFrontendInterface
 {
 
     /**
-     * @param null $GroupId
-     *
      * @return Stage
      */
-    public function frontendCauser($GroupId = null)
+    public function frontendCauser()
     {
 
         $Stage = new Stage('Auswahl Gruppe der', 'Beitragsverursacher');
 
-        $Content = array();
-
-
-        if(($tblGroup = Group::useService()->getGroupByMetaTable('STUDENT'))){
-            $Content[] = new Center('Auswahl für '.$tblGroup->getName()
-                .new Container(new Standard('', __NAMESPACE__.'/View', new ListingIcon(),
-                    array('GroupId' => $tblGroup->getId()))));
-        }
-
-        if(($tblGroupList = Group::useService()->getGroupAll())){
-            foreach($tblGroupList as &$tblGroup) {
-                if($tblGroup->getMetaTable() === 'STUDENT'
-//                    || $tblGroup->getMetaTable() === 'PROSPECT'
-//                    || $tblGroup->getMetaTable() === 'CUSTODY'
-//                    || $tblGroup->getMetaTable() === 'TEACHER'
-//                    || $tblGroup->getMetaTable() === 'CLUB'
-                ){
-                    $tblGroup = false;
-                }
-            }
-            $tblGroupList = array_filter($tblGroupList);
-        }
-        if(false === $tblGroupList
-            || empty($tblGroupList)){
-            $tblGroupList = array();
-        }
-
-        $Content[] = new Center('Auswahl für Personen'
-            .new Container(
-                new Layout(new LayoutGroup(new LayoutRow(array(
-                    new LayoutColumn('', 2),
-                    new LayoutColumn(Causer::useService()->directRoute(
-                        new Form(new FormGroup(new FormRow(array(
-                            new FormColumn(new SelectBox('GroupId', '', array('{{ Name }}' => $tblGroupList)), 11)
-                        ,
-                            new FormColumn(new StandardForm('', new ListingIcon()), 1)
-                        )))), $GroupId)
-                        , 8)
-                ))))
-            ));
-
-        $Stage->setContent(new Layout(
-            new LayoutGroup(
-                new LayoutRow(array(
-                    new LayoutColumn(
-                        ''
-                        , 3),
-                    new LayoutColumn(
-                        new Panel('Kategorien:', new Listing($Content))
-                        , 6)
-                ))
-            )
-        ));
+        $Stage->setContent(
+            $this->layoutPersonGroupList()
+        );
 
 
         return $Stage;
+    }
+
+    /**
+     * @return Layout
+     */
+    public static function layoutPersonGroupList()
+    {
+
+        $tblGroupList = array();
+        if(($tblSettingGroupPersonList = Setting::useService()->getSettingGroupPersonAll())){
+            foreach($tblSettingGroupPersonList as $tblSettingGroupPerson){
+                $tblGroupList[] = $tblSettingGroupPerson->getServiceTblGroupPerson();
+            }
+        }
+        $tblGroupLockedList = array();
+        $tblGroupCustomList = array();
+        if (!empty($tblGroupList)) {
+            /** @var TblGroup $tblGroup */
+            foreach ($tblGroupList as $Index => $tblGroup) {
+
+                $countContent = new Muted(new Small(Group::useService()->countMemberByGroup($tblGroup) . '&nbsp;Mitglieder'));
+                $content =
+                    new Layout(new LayoutGroup(new LayoutRow(array(
+                            new LayoutColumn(
+                                $tblGroup->getName()
+                                . new Muted(new Small('<br/>' . $tblGroup->getDescription()))
+                                , 5),
+                            new LayoutColumn(
+                                $countContent
+                                , 6),
+                            new LayoutColumn(
+                                new PullRight(
+                                    new Standard('', __NAMESPACE__.'/View',
+                                        new GroupIcon(),
+                                        array('GroupId' => $tblGroup->getId()))
+                                ), 1)
+                        )
+                    )));
+
+                if ($tblGroup->isLocked()) {
+                    $tblGroupLockedList[] = $content;
+                } else {
+                    $tblGroupCustomList[] = $content;
+                }
+            }
+        }
+
+        return new Layout(new LayoutGroup(new LayoutRow(array(
+            new LayoutColumn(
+                new Panel('Personen in festen Gruppen', $tblGroupLockedList), 6
+            ),
+            !empty($tblGroupCustomList) ?
+                new LayoutColumn(
+                    new Panel('Personen in individuellen Gruppen', $tblGroupCustomList), 6) : null
+        ))));
     }
 
     public function frontendCauserView($GroupId = null)
@@ -164,7 +163,7 @@ class Frontend extends Extension implements IFrontendInterface
         if(($tblGroup = Group::useService()->getGroupById($GroupId))){
             if(($tblPersonList = Group::useService()->getPersonAllByGroup($tblGroup))){
                 $IsDebtorNumberNeed = false;
-                if($tblSetting = Setting::useService()->getSettingByIdentifier(TblSetting::IDENT_IS_DEBTOR_NUMBER_NEED)){
+                if($tblSetting = Setting::useService()->getSettingByIdentifier(TblSetting::IDENT_IS_DATEV)){
                     if($tblSetting->getValue() == 1){
                         $IsDebtorNumberNeed = true;
                     }
@@ -209,7 +208,7 @@ class Frontend extends Extension implements IFrontendInterface
                                         'Beitragszahler: Keine Bankdaten hinterlegt'));
                                     if(($tblBankAccount = $tblDebtorSelection->getTblBankAccount())){
                                         $BankStatus = new ToolTip(new DangerText(new Info()),
-                                            'Beitragszahler: Referenznummer fehlt');
+                                            'Beitragszahler: Mandatsreferenznummer fehlt');
                                     }
                                     if(($tblBankReference = $tblDebtorSelection->getTblBankReference())){
                                         $BankStatus = new ToolTip(new SuccessText(new Info()), 'Beitragszahler OK');
@@ -301,12 +300,12 @@ class Frontend extends Extension implements IFrontendInterface
 
         } else {
             $Table = new TableData($TableContent, null, array(
-                'InvoiceNumber' => 'Abr.-Nr.',
+                'InvoiceNumber' => 'Rechnungsnummer',
+                'Time'          => 'Abrechnungszeitraum',
                 'Item'          => 'Beitragsart',
                 'Quantity'      => 'Menge',
                 'Price'         => new ToolTip('EP', 'Einzelpreis'),
                 'Summary'       => new ToolTip('GP', 'Gesamtpreis'),
-                'Time'          => 'Abrechnungszeitraum',
                 'IsPaid'        => 'Offene Posten'
             ), array(
                 'columnDefs' => array(
@@ -360,10 +359,9 @@ class Frontend extends Extension implements IFrontendInterface
         }
 
         $ItemList = Item::useService()->getItemAllByPerson($tblPerson);
-        // ToDO Implement Receiver
-        $ColumnList[] = new LayoutColumn(new Panel('Mandatsreferenznummern',
+        $ColumnList[] = new LayoutColumn(new Panel('Mandatsreferenznummer',
             ApiBankReference::receiverPanelContent($this->getReferenceContent($PersonId)).
-            (new Link('Referenznummer hinzufügen', ApiBankReference::getEndpoint(), new Plus()))
+            (new Link('Mandatsreferenznummer hinzufügen', ApiBankReference::getEndpoint(), new Plus()))
                 ->ajaxPipelineOnClick(ApiBankReference::pipelineOpenAddReferenceModal('addBankReference', $PersonId)),
             Panel::PANEL_TYPE_INFO),
             3);
@@ -371,7 +369,6 @@ class Frontend extends Extension implements IFrontendInterface
         if($ItemList){
             foreach($ItemList as $tblItem) {
                 // Panel Color (unchoosen)
-                // ToDO Receiver für den Content
                 $ColumnList[] = new LayoutColumn(new Panel($tblItem->getName(),
                         ApiDebtorSelection::receiverPanelContent($this->getItemContent($PersonId, $tblItem->getId())
                             , $tblItem->getId())
@@ -397,9 +394,9 @@ class Frontend extends Extension implements IFrontendInterface
 
 
         $Stage->setContent(
-            ApiBankReference::receiverModal('Hinzufügen einer Referenznummer', 'addBankReference')
-            .ApiBankReference::receiverModal('Bearbeiten der Referenznummer', 'editBankReference')
-            .ApiBankReference::receiverModal('Entfernen der Referenznummer', 'deleteBankReference')
+            ApiBankReference::receiverModal('Hinzufügen einer Mandatsreferenznummer', 'addBankReference')
+            .ApiBankReference::receiverModal('Bearbeiten der Mandatsreferenznummer', 'editBankReference')
+            .ApiBankReference::receiverModal('Entfernen der Mandatsreferenznummer', 'deleteBankReference')
             .ApiDebtorSelection::receiverModal('Hinzufügen der Beitragszahler', 'addDebtorSelection')
             .ApiDebtorSelection::receiverModal('Bearbeiten der Beitragszahler', 'editDebtorSelection')
             .ApiDebtorSelection::receiverModal('Entfernen der Beitragszahler', 'deleteDebtorSelection')
@@ -427,13 +424,17 @@ class Frontend extends Extension implements IFrontendInterface
                 $NumberList = array();
                 foreach($tblReferenceList as $tblReference) {
                     //ToDO bearbeiten/löschen deaktivieren, wenn sie bereits benutzt werden
-                    $NumberList[] = $tblReference->getReferenceNumber().' '.new ToolTip(new Info().'&nbsp;&nbsp;'
-                            , 'Gültig ab: '.$tblReference->getReferenceDate()).' '
-                        .(new Link('', ApiBankReference::getEndpoint(), new Pencil()))
+                    $Description = '';
+                    if($tblReference->getDescription()){
+                        $Description = '<br/>'.$tblReference->getDescription();
+                    }
+                    $NumberList[] = $tblReference->getReferenceNumber().' '.(new ToolTip(new Info().'&nbsp;&nbsp;'
+                            , htmlspecialchars('Gültig ab: '.$tblReference->getReferenceDate()).' '.$Description))->enableHtml()
+                        .(new Link('', ApiBankReference::getEndpoint(), new Pencil(), array(), 'Mandatsreferenznummer bearbeiten'))
                             ->ajaxPipelineOnClick(ApiBankReference::pipelineOpenEditReferenceModal('editBankReference',
                                 $PersonId, $tblReference->getId()))
                         .' | '
-                        .(new Link(new DangerText(new Disable()), ApiBankReference::getEndpoint()))
+                        .(new Link(new DangerText(new Disable()), ApiBankReference::getEndpoint(), null , array(), 'Mandatsreferenznummer entfernen'))
                             ->ajaxPipelineOnClick(ApiBankReference::pipelineOpenDeleteReferenceModal('deleteBankReference',
                                 $PersonId, $tblReference->getId()));
                 }
@@ -449,7 +450,7 @@ class Frontend extends Extension implements IFrontendInterface
     /**
      * @param string $PersonId
      * @param string $ItemId
-     * @param bool   $IsOpen
+     * @param bool   $IsOpen  // Accordion
      *
      * @return string
      */
@@ -466,15 +467,36 @@ class Frontend extends Extension implements IFrontendInterface
                 foreach($tblDebtorSelectionList as $tblDebtorSelection) {
                     $PaymentType = 'Zahlungsart: ';
                     $BankAccount = 'Bank: ';
-                    $Reference = 'REF: ';
+                    $Reference = 'Mandatsreferenznummer: ';
                     $Debtor = 'Bezahler: ';
+                    $PeriodPayType = 'Zahlungszeitraum: ';
+                    $FromDate = 'Gültig ab: ';
+                    $ToDate = 'Gültig bis: ';
+
+                    if(($tblDebtorPeriodType = $tblDebtorSelection->getTblDebtorPeriodType())){
+                        $PeriodPayType .= new Bold($tblDebtorPeriodType->getName());
+                    }
+                    if($tblDebtorSelection->getFromDate()){
+                        $FromDate .= new Bold($tblDebtorSelection->getFromDate());
+                    } else {
+                        $FromDate .= new Bold('---');
+                    }
+                    if($tblDebtorSelection->getToDate()){
+                        $ToDate .= new Bold($tblDebtorSelection->getToDate());
+                    } else {
+                        $ToDate .= new Bold('kein Enddatum');
+                    }
+                    if(($tblPersonDebtor = $tblDebtorSelection->getServiceTblPersonDebtor())){
+                        $Debtor .= $tblPersonDebtor->getSalutation().' '.substr($tblPersonDebtor->getFirstName(), 0, 1) .'. '
+                            .$tblPersonDebtor->getLastName();
+                    }
 
                     $OptionButtons = new PullRight(
-                        (new Link('', '', new Pencil()))
+                        (new Link('', '', new Pencil(), array(), 'Beitragszahler bearbeiten'))
                             ->ajaxPipelineOnClick(ApiDebtorSelection::pipelineOpenEditDebtorSelectionModal(
                                 'editDebtorSelection', $PersonId, $ItemId, $tblDebtorSelection->getId()))
                         .' | '
-                        .(new Link(new DangerText(new Disable()), ''))
+                        .(new Link(new DangerText(new Disable()), 'Beitragszahler entfernen'))
                             ->ajaxPipelineOnClick(ApiDebtorSelection::pipelineOpenDeleteDebtorSelectionModal(
                                 'deleteDebtorSelection', $PersonId, $ItemId, $tblDebtorSelection->getId()))
                     );
@@ -500,17 +522,20 @@ class Frontend extends Extension implements IFrontendInterface
                     if(($tblBankReference = $tblDebtorSelection->getTblBankReference())){
                         $Reference .= new Bold($tblBankReference->getReferenceNumber());
                     }
-                    if(($tblPersonDebtor = $tblDebtorSelection->getServiceTblPersonDebtor())){
-                        $Debtor .= new Bold($tblPersonDebtor->getLastFirstName());
-                    }
+//                    if(($tblPersonDebtor = $tblDebtorSelection->getServiceTblPersonDebtor())){
+//                        $Debtor .= new Bold($tblPersonDebtor->getLastFirstName());
+//                    }
                     $PanelContent[] = $PaymentType;
                     $PanelContent[] = $ItemVariant;
                     $PanelContent[] = $BankAccount;
                     $PanelContent[] = $Reference;
+                    $PanelContent[] = $PeriodPayType;
+                    $PanelContent[] = $FromDate;
+                    $PanelContent[] = $ToDate;
 //                    $PanelContent[] = $Debtor;
                     /**@var Accordion[] $Accordion */
                     $Accordion[$i] = new Accordion();
-                    $Accordion[$i]->addItem($Debtor.new PullRight($PriceString), implode('<br/>', $PanelContent),
+                    $Accordion[$i]->addItem(new PullClear($Debtor.new PullRight($PriceString)), implode('<br/>', $PanelContent),
                         $IsOpen);
                     $PanelContent = array();
                     $i++;

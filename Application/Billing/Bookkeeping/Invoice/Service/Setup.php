@@ -77,11 +77,13 @@ class Setup extends AbstractSetup
         $this->createColumn($Table, 'Year', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'Month', self::FIELD_TYPE_INTEGER);
         $this->createColumn($Table, 'TargetTime', self::FIELD_TYPE_DATETIME);
+        $this->createColumn($Table, 'BillTime', self::FIELD_TYPE_DATETIME, true);
         $this->createColumn($Table, 'FirstName', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'LastName', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'BasketName', self::FIELD_TYPE_STRING);
         $this->getConnection()->addForeignKey($Table, $tblInvoiceCreditor);
         $this->createColumn($Table, 'serviceTblPersonCauser', self::FIELD_TYPE_BIGINT, true);
+        $this->createColumn($Table, 'serviceTblBasket', self::FIELD_TYPE_BIGINT, true);
 
         return $Table;
     }

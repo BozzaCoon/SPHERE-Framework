@@ -90,6 +90,16 @@ class Service extends AbstractService
     }
 
     /**
+     * @param TblType $tblType
+     *
+     * @return false|TblToPerson[]
+     */
+    public function getPersonRelationshipAllByType(TblType $tblType)
+    {
+        return (new Data($this->getBinding()))->getPersonRelationshipAllByType($tblType);
+    }
+
+    /**
      * @param TblToPerson[] $tblToPersonList
      *
      * @return array|TblPerson[]
@@ -589,6 +599,18 @@ class Service extends AbstractService
     }
 
     /**
+     * @param TblPerson $tblPersonFrom
+     * @param TblPerson $tblPersonTo
+     *
+     * @return bool|TblToPerson
+     */
+    public function getRelationshipToPersonByPersonFromAndPersonTo(TblPerson $tblPersonFrom,TblPerson $tblPersonTo)
+    {
+
+        return (new Data($this->getBinding()))->getRelationshipToPersonByPersonFromAndPersonTo($tblPersonFrom, $tblPersonTo);
+    }
+
+    /**
      * @param integer $Id
      *
      * @return bool|TblToCompany
@@ -624,17 +646,19 @@ class Service extends AbstractService
      * @param TblType $tblType
      * @param string $Remark
      *
+     * @param integer|null $Ranking
      * @return bool
      */
     public function insertRelationshipToPerson(
         TblPerson $tblPersonFrom,
         TblPerson $tblPersonTo,
         TblType $tblType,
-        $Remark
+        $Remark,
+        $Ranking = null
     ) {
 
         if ((new Data($this->getBinding()))->addPersonRelationshipToPerson($tblPersonFrom, $tblPersonTo, $tblType,
-            $Remark)
+            $Remark, $Ranking)
         ) {
             return true;
         } else {
@@ -701,5 +725,15 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->restoreToCompany($tblToCompany);
+    }
+
+    /**
+     * @param $modifyList
+     *
+     * @return bool
+     */
+    public function updateRelationshipRanking($modifyList)
+    {
+        return (new Data($this->getBinding()))->updateRelationshipRanking($modifyList);
     }
 }

@@ -116,10 +116,12 @@ class Service extends ServiceScoreRule
                 $GradeType['Code'],
                 $GradeType['Description'],
                 isset($GradeType['IsHighlighted']) ? true : false,
-                $tblTestType
+                $tblTestType,
+                isset($GradeType['IsPartGrade']) ? true : false
             );
+
             return new Success(new \SPHERE\Common\Frontend\Icon\Repository\Success() . ' Der Zensuren-Typ ist erfasst worden')
-            . new Redirect('/Education/Graduation/Gradebook/GradeType', Redirect::TIMEOUT_SUCCESS);
+                . new Redirect('/Education/Graduation/Gradebook/GradeType', Redirect::TIMEOUT_SUCCESS);
         }
 
         return $Stage;
@@ -166,7 +168,8 @@ class Service extends ServiceScoreRule
                 $GradeType['Description'],
                 isset($GradeType['IsHighlighted']) ? true : false,
                 Evaluation::useService()->getTestTypeById($GradeType['Type']),
-                $tblGradeType->isActive()
+                $tblGradeType->isActive(),
+                isset($GradeType['IsPartGrade']) ? true : false
             );
             return new Success(new \SPHERE\Common\Frontend\Icon\Repository\Success() . ' Der Zensuren-Typ ist erfolgreich gespeichert worden')
             . new Redirect('/Education/Graduation/Gradebook/GradeType', Redirect::TIMEOUT_SUCCESS);
@@ -837,6 +840,9 @@ class Service extends ServiceScoreRule
             }
 
             $error = array();
+            // Teilnoten
+            $subResult = array();
+            /** @var TblGrade $tblGrade */
             foreach ($tblGradeList as $tblGrade) {
                 if ($tblScoreCondition) {
                     /** @var TblScoreCondition $tblScoreCondition */
@@ -854,11 +860,30 @@ class Service extends ServiceScoreRule
                                     ) {
                                         $hasFoundGradeType = true;
                                         if ($tblGrade->getGrade() !== null && $tblGrade->getGrade() !== '' && is_numeric($tblGrade->getGrade())) {
-                                            $count++;
-                                            $result[$tblScoreCondition->getId()][$tblScoreGroup->getTblScoreGroup()->getId()][$count]['Value']
-                                                = floatval($tblGrade->getGrade()) * floatval($tblScoreGroupGradeTypeList->getMultiplier());
-                                            $result[$tblScoreCondition->getId()][$tblScoreGroup->getTblScoreGroup()->getId()][$count]['Multiplier']
-                                                = floatval($tblScoreGroupGradeTypeList->getMultiplier());
+                                            // für Teilnoten Extra-Liste
+                                            if (($tblGradeType = $tblGrade->getTblGradeType())
+                                                && $tblGradeType->isPartGrade()
+                                            ) {
+                                                if (isset($subResult[$tblGradeType->getId()])) {
+                                                    $subResult[$tblGradeType->getId()]['SubCount']++;
+                                                    $subResult[$tblGradeType->getId()]['SubValue'] += floatval($tblGrade->getGrade());
+                                                } else {
+                                                    $subResult[$tblGradeType->getId()] = array(
+                                                        'tblScoreConditionId' => $tblScoreCondition->getId(),
+                                                        'tblScoreGroupId' => $tblScoreGroup->getTblScoreGroup()->getId(),
+                                                        'Multiplier' => floatval($tblScoreGroupGradeTypeList->getMultiplier()),
+                                                        'SubValue' =>  floatval($tblGrade->getGrade()),
+                                                        'SubCount' => 1
+                                                    );
+                                                }
+
+                                            } else {
+                                                $count++;
+                                                $result[$tblScoreCondition->getId()][$tblScoreGroup->getTblScoreGroup()->getId()][$count]['Value']
+                                                    = floatval($tblGrade->getGrade()) * floatval($tblScoreGroupGradeTypeList->getMultiplier());
+                                                $result[$tblScoreCondition->getId()][$tblScoreGroup->getTblScoreGroup()->getId()][$count]['Multiplier']
+                                                    = floatval($tblScoreGroupGradeTypeList->getMultiplier());
+                                            }
                                         }
 
                                         break;
@@ -899,6 +924,17 @@ class Service extends ServiceScoreRule
                     return round($average, 2);
                 } else {
                     return false;
+                }
+            }
+
+            // Teilnoten zusammenführen -> Gesamt-Teilnote
+            if (!empty($subResult)) {
+                foreach ($subResult as $item) {
+                    $count++;
+                    $result[$item['tblScoreConditionId']][$item['tblScoreGroupId']][$count]['Value']
+                        = ($item['SubValue'] / $item['SubCount']) * $item['Multiplier'];
+                    $result[$item['tblScoreConditionId']][$item['tblScoreGroupId']][$count]['Multiplier']
+                        = $item['Multiplier'];
                 }
             }
 
@@ -1553,9 +1589,16 @@ class Service extends ServiceScoreRule
     public function setGradeTypeActive(TblGradeType $tblGradeType, $IsActive = true)
     {
 
-        return (new Data($this->getBinding()))->updateGradeType($tblGradeType, $tblGradeType->getName(),
-            $tblGradeType->getCode(), $tblGradeType->getDescription(), $tblGradeType->isHighlighted(),
-            $tblGradeType->getServiceTblTestType() ? $tblGradeType->getServiceTblTestType() : null, $IsActive);
+        return (new Data($this->getBinding()))->updateGradeType(
+            $tblGradeType,
+            $tblGradeType->getName(),
+            $tblGradeType->getCode(),
+            $tblGradeType->getDescription(),
+            $tblGradeType->isHighlighted(),
+            $tblGradeType->getServiceTblTestType() ? $tblGradeType->getServiceTblTestType() : null,
+            $IsActive,
+            $tblGradeType->isPartGrade()
+        );
     }
 
     /**

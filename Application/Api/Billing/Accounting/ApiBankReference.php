@@ -5,6 +5,9 @@ use SPHERE\Application\Api\ApiTrait;
 use SPHERE\Application\Api\Dispatcher;
 use SPHERE\Application\Billing\Accounting\Causer\Causer;
 use SPHERE\Application\Billing\Accounting\Debtor\Debtor;
+use SPHERE\Application\Billing\Bookkeeping\Basket\Basket;
+use SPHERE\Application\Billing\Inventory\Setting\Service\Entity\TblSetting;
+use SPHERE\Application\Billing\Inventory\Setting\Setting;
 use SPHERE\Application\IApiInterface;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Common\Frontend\Ajax\Emitter\ServerEmitter;
@@ -285,6 +288,7 @@ class ApiBankReference extends Extension implements IApiInterface
      * @return IFormInterface $Form
      */
     public function formReference($Identifier = '', $PersonId = '', $ReferenceId = '')
+
     {
 
         // choose between Add and Edit
@@ -293,6 +297,13 @@ class ApiBankReference extends Extension implements IApiInterface
             $SaveButton->ajaxPipelineOnClick(self::pipelineSaveEditReference($Identifier, $PersonId,
                 $ReferenceId));
         } else {
+            if(($tblSetting = Setting::useService()->getSettingByIdentifier(TblSetting::IDENT_IS_AUTO_REFERENCE_NUMBER))){
+                if($tblSetting->getValue()){
+                    $MaxNumber = Debtor::useService()->getBankReferenceMaxNumber();
+                    $MaxNumber++;
+                    $_POST['Reference']['Number'] = $MaxNumber;
+                }
+            }
             $SaveButton->ajaxPipelineOnClick(self::pipelineSaveAddReference($Identifier, $PersonId));
         }
 
@@ -300,12 +311,17 @@ class ApiBankReference extends Extension implements IApiInterface
             new FormGroup(array(
                 new FormRow(array(
                     new FormColumn(
-                        (new TextField('Reference[Number]', 'Referenznummer', 'Referenznummer'))->setRequired()
+                        (new TextField('Reference[Number]', 'Mandatsreferenznummer', 'Mandatsreferenznummer'))->setRequired()
                         , 6),
                     new FormColumn(
                         (new DatePicker('Reference[Date]', 'Datum', 'Gültig ab'))->setRequired()
                         , 6)
                 )),
+                new FormRow(
+                    new FormColumn(
+                        new TextField('Reference[Description]', 'Beschreibung', 'Beschreibung')
+                    )
+                ),
                 new FormRow(
                     new FormColumn(
                         $SaveButton
@@ -330,7 +346,7 @@ class ApiBankReference extends Extension implements IApiInterface
         $Error = false;
         $form = $this->formReference($Identifier, $PersonId, $ReferenceId);
         if(isset($Reference['Number']) && empty($Reference['Number'])){
-            $form->setError('Reference[Number]', 'Bitte geben Sie eine Referenznummer an');
+            $form->setError('Reference[Number]', 'Bitte geben Sie eine Mandatsreferenznummer an');
             $Error = true;
         } else {
             if(($tblReference = Debtor::useService()->getBankReferenceByReference($Reference['Number']))){
@@ -338,7 +354,7 @@ class ApiBankReference extends Extension implements IApiInterface
                 if($tblPerson && ($tblPersonCompare = $tblReference->getServiceTblPerson())
                     && $tblPerson->getId() !== $tblPersonCompare->getId()){
                     $form->setError('Reference[Number]',
-                        'Bitte geben sie eine noch nicht vergebene Referenznummer an');
+                        'Bitte geben sie eine noch nicht vergebene Mandatsreferenznummer an');
                     $Error = true;
                 }
             }
@@ -385,21 +401,23 @@ class ApiBankReference extends Extension implements IApiInterface
             // display Errors on form
             $Global = $this->getGlobal();
             $Global->POST['Reference']['Number'] = $Reference['Number'];
+            $Global->POST['Reference']['Description'] = $Reference['Description'];
+            $Global->POST['Reference']['Date'] = $Reference['Date'];
             $Global->savePost();
             return Debtor::useFrontend()->getPersonPanel($PersonId).$form;
         }
 
         if(($tblPerson = Person::useService()->getPersonById($PersonId))){
             $tblReference = Debtor::useService()->createBankReference($tblPerson, $Reference['Number'],
-                $Reference['Date']);
+                $Reference['Description'], $Reference['Date']);
             if($tblReference){
-                return new Success('Referenznummer erfolgreich angelegt').self::pipelineCloseModal($Identifier,
+                return new Success('Mandatsreferenznummer erfolgreich angelegt').self::pipelineCloseModal($Identifier,
                         $PersonId);
             } else {
-                return new Danger('Referenznummer konnte nicht gengelegt werden');
+                return new Danger('Mandatsreferenznummer konnte nicht gengelegt werden');
             }
         } else {
-            return new Danger('Referenznummer konnte nicht gengelegt werden(Person nicht vorhanden)');
+            return new Danger('Mandatsreferenznummer konnte nicht gengelegt werden(Person nicht vorhanden)');
         }
     }
 
@@ -419,6 +437,8 @@ class ApiBankReference extends Extension implements IApiInterface
             // display Errors on form
             $Global = $this->getGlobal();
             $Global->POST['Reference']['Number'] = $Reference['Number'];
+            $Global->POST['Reference']['Description'] = $Reference['Description'];
+            $Global->POST['Reference']['Date'] = $Reference['Date'];
             $Global->savePost();
             return $form;
         }
@@ -426,12 +446,12 @@ class ApiBankReference extends Extension implements IApiInterface
         $IsChange = false;
         if(($tblReference = Debtor::useService()->getBankReferenceById($ReferenceId))){
             $IsChange = Debtor::useService()->changeBankReference($tblReference, $Reference['Number'],
-                $Reference['Date']);
+                $Reference['Description'], $Reference['Date']);
         }
 
         return ($IsChange
-            ? new Success('Referenznummer erfolgreich geändert').self::pipelineCloseModal($Identifier, $PersonId)
-            : new Danger('Referenznummer konnte nicht geändert werden'));
+            ? new Success('Mandatsreferenznummer erfolgreich geändert').self::pipelineCloseModal($Identifier, $PersonId)
+            : new Danger('Mandatsreferenznummer konnte nicht geändert werden'));
     }
 
     /**
@@ -447,6 +467,7 @@ class ApiBankReference extends Extension implements IApiInterface
         if('' !== $ReferenceId && ($tblReference = Debtor::useService()->getBankReferenceById($ReferenceId))){
             $Global = $this->getGlobal();
             $Global->POST['Reference']['Number'] = $tblReference->getReferenceNumber();
+            $Global->POST['Reference']['Description'] = $tblReference->getDescription();
             $Global->POST['Reference']['Date'] = $tblReference->getReferenceDate();
             $Global->savePost();
         }
@@ -478,7 +499,7 @@ class ApiBankReference extends Extension implements IApiInterface
                 new LayoutColumn(new Bold($PersonString), 10),
             ))));
             $Content[] = new Layout(new LayoutGroup(new LayoutRow(array(
-                new LayoutColumn('Referenznummer: ', 2),
+                new LayoutColumn('Mandantsreferenz&nbsp;Nr.: ', 2),
                 new LayoutColumn(new Bold($tblReference->getReferenceNumber()), 10),
             ))));
             $Content[] = new Layout(new LayoutGroup(new LayoutRow(array(
@@ -490,7 +511,7 @@ class ApiBankReference extends Extension implements IApiInterface
                 new LayoutGroup(
                     new LayoutRow(array(
                         new LayoutColumn(
-                            new Panel('Soll die Referenznummer wirklich entfernt werden?'
+                            new Panel('Soll die Mandatsreferenznummer wirklich entfernt werden?'
                                 , $Content, Panel::PANEL_TYPE_DANGER)
                         ),
                         new LayoutColumn(
@@ -504,7 +525,7 @@ class ApiBankReference extends Extension implements IApiInterface
             );
 
         } else {
-            return new Warning('Referenznummer wurde nicht gefunden');
+            return new Warning('Mandatsreferenznummer wurde nicht gefunden');
         }
     }
 
@@ -519,37 +540,64 @@ class ApiBankReference extends Extension implements IApiInterface
     {
 
         if(($tblReference = Debtor::useService()->getBankReferenceById($ReferenceId))){
+            $RowContent = array();
+            // Verwendungen in Zahlungszuweisungen
             if(($tblDebtorSelectionList = Debtor::useService()->getDebtorSelectionAllByBankReference($tblReference))){
-                $RowContent = array();
                 foreach($tblDebtorSelectionList as $tblDebtorSelection) {
                     $ItemString = '';
                     if(($tblItem = $tblDebtorSelection->getServiceTblItem())){
                         $ItemString = $tblItem->getName();
-                    }
-                    $CauserString = '';
-                    if(($tblPersonCauser = $tblDebtorSelection->getServiceTblPersonCauser())){
-                        $CauserString = $tblPersonCauser->getLastFirstName();
                     }
                     $RowContent[] = new Layout(
                         new LayoutGroup(
                             new LayoutRow(array(
                                 new LayoutColumn('Beitragsart:', 2),
                                 new LayoutColumn(new Bold($ItemString), 4),
-                                new LayoutColumn('Beitragsverursacher:', 2),
-                                new LayoutColumn(new Bold($CauserString), 4),
+                                new LayoutColumn('Fundort:', 1),
+                                new LayoutColumn(new Bold('Beitragsverursacher'), 5),
                             ))
                         )
                     );
                 }
-                return new Danger('Referenznummer wird benutzt, diese kann nicht entfernt werden!'
+            }
+            // Verwendungen in aktiven Abrechnungen
+            if(($tblBasketVerificationList = Basket::useService()->getBasketVerificationAllByBankReference($tblReference))){
+                foreach($tblBasketVerificationList as $tblBasketVerification){
+                    if(($tblBasket = $tblBasketVerification->getTblBasket())){
+                        if(!$tblBasket->getIsDone()){
+                            // Abreachnungen, in denen die Referenz noch aktiv benutzt wird (noch nicht berechnete Abrechnungen)
+                            $ItemString = '';
+                            if(($tblItem = $tblBasketVerification->getServiceTblItem())){
+                                $ItemString = $tblItem->getName();
+                            }
+                            $BasketString = 'Abrechnung '.$tblBasket->getName().' '.$tblBasket->getMonth(true).'.'.$tblBasket->getYear();
+
+                            $RowContent[] = new Layout(
+                                new LayoutGroup(
+                                    new LayoutRow(array(
+                                        new LayoutColumn('Beitragsart:', 2),
+                                        new LayoutColumn(new Bold($ItemString), 4),
+                                        new LayoutColumn('Fundort:', 1),
+                                        new LayoutColumn(new Bold($BasketString), 5),
+                                    ))
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+
+            if(!empty($RowContent)){
+                return new Danger('Mandatsreferenznummer wird benutzt, diese kann nicht entfernt werden!'
                     .new Container(implode('', $RowContent)));
             }
+
             Debtor::useService()->removeBankReference($tblReference);
 
-            return new Success('Referenznummer wurde erfolgreich entfernt').self::pipelineCloseModal($Identifier,
+            return new Success('Mandatsreferenznummer wurde erfolgreich entfernt').self::pipelineCloseModal($Identifier,
                     $PersonId);
         }
-        return new Danger('Referenznummer konnte nicht entfernt werden');
+        return new Danger('Mandatsreferenznummer konnte nicht entfernt werden');
     }
 
 }

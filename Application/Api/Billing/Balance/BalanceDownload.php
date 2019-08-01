@@ -4,6 +4,7 @@ namespace SPHERE\Application\Api\Billing\Balance;
 use SPHERE\Application\Billing\Bookkeeping\Balance\Balance;
 use SPHERE\Application\Billing\Bookkeeping\Invoice\Invoice;
 use SPHERE\Application\Billing\Inventory\Item\Item;
+use SPHERE\Application\Billing\Inventory\Item\Service\Entity\TblItem;
 use SPHERE\Application\Education\Lesson\Division\Division;
 use SPHERE\Application\IModuleInterface;
 use SPHERE\Application\IServiceInterface;
@@ -25,13 +26,6 @@ class BalanceDownload implements IModuleInterface
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/Balance/Print/Download', __NAMESPACE__.'\BalanceDownload::downloadBalanceList'
         ));
-        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
-            __NAMESPACE__.'/Balance/MonthOverView/Download', __NAMESPACE__.'\BalanceDownload::downloadMonthOverView'
-        ));
-        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
-            __NAMESPACE__.'/Balance/YearOverView/Download', __NAMESPACE__.'\BalanceDownload::downloadYearOverView'
-        ));
-
     }
 
     /**
@@ -51,7 +45,7 @@ class BalanceDownload implements IModuleInterface
     }
 
     /**
-     * @param string $ItemId
+     * @param string $ItemIdString
      * @param string $Year
      * @param string $From
      * @param string $To
@@ -59,60 +53,51 @@ class BalanceDownload implements IModuleInterface
      *
      * @return bool|string
      */
-    public function downloadBalanceList($ItemId = '', $Year = '', $From = '', $To = '', $DivisionId = '0')
+    public function downloadBalanceList($ItemIdString = '', $Year = '', $From = '', $To = '', $DivisionId = '0')
     {
 
-        if(($tblItem = Item::useService()->getItemById($ItemId))){
-            $PriceList = Balance::useService()->getPriceListByItemAndYear($tblItem, $Year, $From, $To, $DivisionId);
+        if($ItemIdString){
+            $ItemIdList = explode(",", $ItemIdString);
+            $tblItemList = array();
+            foreach($ItemIdList as $ItemId){
+                $tblItemList[] = Item::useService()->getItemById($ItemId);
+            }
+            $DivisionString = '';
+            // ToDO später sollen andere Personenlisten auswählbar werden (Personengruppen / Einzelperson)
+            if($DivisionId && ( $tblDivision = Division::useService()->getDivisionById($DivisionId))){
+                // Datei erhält Name der Klasse
+                $DivisionString = $tblDivision->getDisplayName().'_';
+                // Pesronenliste aus der Klasse:
+                $tblPersonList = Division::useService()->getPersonAllByDivisionList(array($tblDivision));
+            } else {
+                // Personenliste, wenn keine Klasse gewählt wurde:
+                $tblPersonList = Balance::useService()->getPersonListByInvoiceTime($Year,
+                    $From, $To);
+            }
+            $PriceList = array();
+            if($tblPersonList){
+                foreach($tblPersonList as $tblPerson){
+                    /** @var TblItem $tblItem */
+                    foreach($tblItemList as $tblItem){
+                        // Rechnungen zusammengefasst (je Beitragsart)
+                        $PriceList = Balance::useService()->getPriceListByItemAndPerson($tblItem, $Year,
+                            $From, $To, $tblPerson, $PriceList);
+                    }
+                }
+                // Summe der einzelnen Beiträge erstellen
+                $PriceList = Balance::useService()->getSummaryByItemPrice($PriceList);
+            }
             if(!empty($PriceList)){
-                $fileLocation = Balance::useService()->createBalanceListExcel($PriceList, $tblItem->getName());
+                $fileLocation = Balance::useService()->createBalanceListExcel($PriceList, $tblItemList);
                 $MonthList = Invoice::useService()->getMonthList();
                 $StartMonth = $MonthList[$From];
                 $ToMonth = $MonthList[$To];
-                $DivisionString = '';
-                if(($tblDivision = Division::useService()->getDivisionById($DivisionId))){
-                    $DivisionString = '_'.$tblDivision->getDisplayName();
-                }
 
                 return FileSystem::getDownload($fileLocation->getRealPath(),
-                    $tblItem->getName().$DivisionString.'_'.$Year.'-'.$StartMonth.'-'.$ToMonth.'.xlsx')->__toString();
+                    $DivisionString.$Year.'-'.$StartMonth.'-'.$ToMonth.'.xlsx')->__toString();
             }
         }
 
         return false;
     }
-
-    /**
-     * @param string $Year
-     * @param string $Month
-     *
-     * @return bool|string
-     */
-    public function downloadMonthOverView($Year = '', $Month = '')
-    {
-
-        if(($fileLocation = Balance::useService()->createMonthOverViewExcel($Year, $Month))){
-            $MonthList = Invoice::useService()->getMonthList();
-            $Month = $MonthList[$Month];
-            return FileSystem::getDownload($fileLocation->getRealPath(),
-                'Monatsübersicht-'.$Month.'.xlsx')->__toString();
-        }
-        return false;
-    }
-
-    /**
-     * @param string $Year
-     *
-     * @return bool|string
-     */
-    public function downloadYearOverView($Year = '')
-    {
-
-        if(($fileLocation = Balance::useService()->createYearOverViewExcel($Year))){
-            return FileSystem::getDownload($fileLocation->getRealPath(),
-                'Jahresübersicht-'.$Year.'.xlsx')->__toString();
-        }
-        return false;
-    }
-
 }

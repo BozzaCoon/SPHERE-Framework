@@ -11,7 +11,6 @@ namespace SPHERE\Application\Education\Certificate\Prepare;
 use SPHERE\Application\Api\Education\Certificate\Generator\Certificate;
 use SPHERE\Application\Api\Education\Certificate\Generator\Repository\GymAbgSekI;
 use SPHERE\Application\Api\Education\Certificate\Generator\Repository\GymAbgSekII;
-use SPHERE\Application\Education\Certificate\Generate\Generate;
 use SPHERE\Application\Education\Certificate\Generate\Service\Entity\TblGenerateCertificate;
 use SPHERE\Application\Education\Certificate\Generator\Generator;
 use SPHERE\Application\Education\Certificate\Generator\Service\Entity\TblCertificate;
@@ -243,6 +242,19 @@ class Service extends AbstractService
 
     /**
      * @param TblPrepareCertificate $tblPrepare
+     * @param TblTestType $tblTestType
+     *
+     * @return false|TblPrepareGrade[]
+     */
+    public function getPrepareGradesByPrepare(
+        TblPrepareCertificate $tblPrepare,
+        TblTestType $tblTestType
+    ) {
+        return (new Data($this->getBinding()))->getPrepareGradesByPrepare($tblPrepare, $tblTestType);
+    }
+
+    /**
+     * @param TblPrepareCertificate $tblPrepare
      * @param TblPerson $tblPerson
      * @param TblTestType $tblTestType
      * @param bool $IsForced
@@ -286,6 +298,16 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->getPrepareInformationAllByPerson($tblPrepare, $tblPerson);
+    }
+
+    /**
+     * @param TblPrepareCertificate $tblPrepare
+     *
+     * @return false|TblPrepareInformation[]
+     */
+    public function getPrepareInformationAllByPrepare(TblPrepareCertificate $tblPrepare)
+    {
+        return (new Data($this->getBinding()))->getPrepareInformationAllByPrepare($tblPrepare);
     }
 
     /**
@@ -429,11 +451,11 @@ class Service extends AbstractService
             && ($tblDivision = $tblPrepareStudent->getTblPrepareCertificate()->getServiceTblDivision())
         ) {
 
-            if (($tblGenerateCertificate = $tblPrepare->getServiceTblGenerateCertificate())
-                && !$tblGenerateCertificate->isLocked()
-            ) {
-                Generate::useService()->lockGenerateCertificate($tblGenerateCertificate, true);
-            }
+//            if (($tblGenerateCertificate = $tblPrepare->getServiceTblGenerateCertificate())
+//                && !$tblGenerateCertificate->isLocked()
+//            ) {
+//                Generate::useService()->lockGenerateCertificate($tblGenerateCertificate, true);
+//            }
 
             if (($tblCertificateType = $tblCertificate->getTblCertificateType())
                 && $tblCertificateType->getIdentifier() == 'DIPLOMA'
@@ -584,16 +606,18 @@ class Service extends AbstractService
 
                             if (!empty(trim($value))) {
                                 $value = trim($value);
-                                // Zeichenbegrenzen
-                                if (($CharCount = Generator::useService()->getCharCountByCertificateAndField(
-                                    $tblCertificate, $field, !isset($array['TeamExtra'])))
-                                ) {
-                                    $value = str_replace("\n", " ", $value);
 
-                                    if (strlen($value) > $CharCount) {
-                                        $value = substr($value, 0, $CharCount);
-                                    }
-                                }
+                                // erstmal deaktivieren, es werden teilweise zuviele Zeichen abgeschnitten
+//                                // Zeichenbegrenzen
+//                                if (($CharCount = Generator::useService()->getCharCountByCertificateAndField(
+//                                    $tblCertificate, $field, !isset($array['TeamExtra'])))
+//                                ) {
+//                                    $value = str_replace("\n", " ", $value);
+//
+//                                    if (strlen($value) > $CharCount) {
+//                                        $value = substr($value, 0, $CharCount);
+//                                    }
+//                                }
 
                                 if (($tblPrepareInformation = $this->getPrepareInformationBy($tblPrepareItem, $tblPerson,
                                     $field))
@@ -877,8 +901,14 @@ class Service extends AbstractService
                         $Content['P' . $personId]['Input'][$tblPrepareInformation->getField()] = $tblPerson->getFirstSecondName()
                             . ' ' . $tblPerson->getLastName() . ' ' . $tblPrepareInformation->getValue() . '.';
                     } elseif ($tblPrepareInformation->getField() == 'IndividualTransfer') {
-                        $Content['P' . $personId]['Input'][$tblPrepareInformation->getField()] = $tblPerson->getFirstSecondName()
-                            . ' ' . $tblPrepareInformation->getValue();
+                        // SSWHD-262
+                        if ($tblConsumer && $tblConsumer->getAcronym() == 'ESZC') {
+                            $text = '';
+                        } else {
+                            $text = $tblPerson->getFirstSecondName() . ' ';
+                        }
+
+                        $Content['P' . $personId]['Input'][$tblPrepareInformation->getField()] = $text . $tblPrepareInformation->getValue();
                     } elseif ($isSupportLearningCertificate && $tblPrepareInformation->getField() == 'Support') {
                         $support = $tblPrepareInformation->getValue();
                     } else {
@@ -1990,10 +2020,10 @@ class Service extends AbstractService
                 $isDiploma = false;
             }
 
-            if (!$tblGenerateCertificate->isLocked()) {
-
-                Generate::useService()->lockGenerateCertificate($tblGenerateCertificate, true);
-            }
+//            if (!$tblGenerateCertificate->isLocked()) {
+//
+//                Generate::useService()->lockGenerateCertificate($tblGenerateCertificate, true);
+//            }
 
             return (new Data($this->getBinding()))->copySubjectGradesByPrepare($tblPrepare, $isDiploma);
         } else {
@@ -3205,8 +3235,11 @@ class Service extends AbstractService
             return $form;
         }
 
-
-        $tblLeaveStudent = (new Data($this->getBinding()))->createLeaveStudent($tblPerson, $tblDivision, $tblCertificate);
+        if (($tblLeaveStudent = $this->getLeaveStudentBy($tblPerson, $tblDivision))) {
+            (new Data($this->getBinding()))->updateLeaveStudentCertificate($tblLeaveStudent, $tblCertificate);
+        } else {
+            $tblLeaveStudent = (new Data($this->getBinding()))->createLeaveStudent($tblPerson, $tblDivision, $tblCertificate);
+        }
 
         if ($tblLeaveStudent) {
             return new Success('Die Daten wurden gespeichert.', new \SPHERE\Common\Frontend\Icon\Repository\Success())
@@ -3376,6 +3409,10 @@ class Service extends AbstractService
             foreach ($tblPrepareGradeList as $tblPrepareGrade) {
                 if (($tblSubject = $tblPrepareGrade->getServiceTblSubject())
                 ) {
+                    if ($tblSubject->getAcronym() == 'EN2') {
+                        $tblSubject = Subject::useService()->getSubjectByAcronym('EN');
+                    }
+
                     if (($tblPrepareAdditionalGrade = Prepare::useService()->getPrepareAdditionalGradeBy(
                         $tblPrepareCertificate,
                         $tblPerson,
@@ -3428,6 +3465,10 @@ class Service extends AbstractService
                                 && ($tblSubject = $tblGrade->getServiceTblSubject())
                             ) {
                                 if ($tblGrade->getGrade() !== null && $tblGrade->getGrade() !== '') {
+                                    if ($tblSubject->getAcronym() == 'EN2') {
+                                        $tblSubject = Subject::useService()->getSubjectByAcronym('EN');
+                                    }
+
                                     if (($tblPrepareAdditionalGrade = $this->getPrepareAdditionalGradeBy(
                                         $tblPrepareCertificate, $tblPerson, $tblSubject, $tblPrepareAdditionalGradeType))
                                     ) {
@@ -3771,10 +3812,16 @@ class Service extends AbstractService
                                 && ($tblPersonStudent = $tblSubjectStudent->getServiceTblPerson())
                                 && $tblPerson->getId() == $tblPersonStudent->getId()
                             ) {
-                                if ($tblSubjectGroup->isAdvancedCourse()) {
-                                    $advancedCourses[$tblSubject->getId()] = $tblSubject;
-                                } else {
-                                    $basicCourses[$tblSubject->getId()] = $tblSubject;
+                                if ($tblSubject->getAcronym() == 'EN2') {
+                                    $tblSubject = Subject::useService()->getSubjectByAcronym('EN');
+                                }
+
+                                if ($tblSubject) {
+                                    if ($tblSubjectGroup->isAdvancedCourse()) {
+                                        $advancedCourses[$tblSubject->getId()] = $tblSubject;
+                                    } else {
+                                        $basicCourses[$tblSubject->getId()] = $tblSubject;
+                                    }
                                 }
                             }
                         }

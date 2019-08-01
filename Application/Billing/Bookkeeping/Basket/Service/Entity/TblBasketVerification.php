@@ -8,11 +8,13 @@ use Doctrine\ORM\Mapping\Table;
 use SPHERE\Application\Billing\Accounting\Debtor\Debtor;
 use SPHERE\Application\Billing\Accounting\Debtor\Service\Entity\TblBankAccount;
 use SPHERE\Application\Billing\Accounting\Debtor\Service\Entity\TblBankReference;
+use SPHERE\Application\Billing\Accounting\Debtor\Service\Entity\TblDebtorSelection;
 use SPHERE\Application\Billing\Bookkeeping\Balance\Balance;
 use SPHERE\Application\Billing\Bookkeeping\Balance\Service\Entity\TblPaymentType;
 use SPHERE\Application\Billing\Bookkeeping\Basket\Basket;
 use SPHERE\Application\Billing\Inventory\Item\Item;
 use SPHERE\Application\Billing\Inventory\Item\Service\Entity\TblItem;
+use SPHERE\Application\Billing\Inventory\Item\Service\Entity\TblItemVariant;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\System\Database\Fitting\Element;
@@ -32,11 +34,16 @@ class TblBasketVerification extends Element
     const ATTR_SERVICE_TBL_BANK_REFERENCE = 'serviceTblBankReference';
     const ATTR_SERVICE_TBL_PAYMENT_TYPE = 'serviceTblPaymentType';
     const ATTR_SERVICE_TBL_ITEM = 'serviceTblItem';
+    const ATTR_SERVICE_TBL_DEBTOR_SELECTION = 'serviceTblDebtorSelection';
 
     /**
      * @Column(type="decimal", precision=14, scale=4)
      */
     protected $Value;
+    /**
+     * @Column(type="bigint")
+     */
+    protected $serviceTblItemVariant;
     /**
      * @Column(type="integer")
      */
@@ -69,6 +76,10 @@ class TblBasketVerification extends Element
      * @Column(type="bigint")
      */
     protected $serviceTblItem;
+    /**
+     * @Column(type="bigint")
+     */
+    protected $serviceTblDebtorSelection;
 
     /**
      * @param bool $IsFormInput
@@ -91,6 +102,28 @@ class TblBasketVerification extends Element
     {
 
         $this->Value = $Value;
+    }
+
+    /**
+     * @return bool|TblItemVariant
+     */
+    public function getServiceTblItemVariant()
+    {
+
+        if(null === $this->serviceTblItemVariant){
+            return false;
+        } else {
+            return Item::useService()->getItemVariantById($this->serviceTblItemVariant);
+        }
+    }
+
+    /**
+     * @param null|TblItemVariant $tblItemVariant
+     */
+    public function setServiceTblItemVariant(TblItemVariant $tblItemVariant = null)
+    {
+
+        $this->serviceTblItemVariant = (null === $tblItemVariant ? null : $tblItemVariant->getId());
     }
 
     /**
@@ -266,6 +299,28 @@ class TblBasketVerification extends Element
     }
 
     /**
+     * @return bool|TblDebtorSelection
+     */
+    public function getServiceTblDebtorSelection()
+    {
+
+        if(null === $this->serviceTblDebtorSelection){
+            return false;
+        } else {
+            return Debtor::useService()->getDebtorSelectionById($this->serviceTblDebtorSelection);
+        }
+    }
+
+    /**
+     * @param null|TblDebtorSelection $tblDebtorSelection
+     */
+    public function setServiceTblDebtorSelection(TblDebtorSelection $tblDebtorSelection = null)
+    {
+
+        $this->serviceTblDebtorSelection = (null === $tblDebtorSelection ? null : $tblDebtorSelection->getId());
+    }
+
+    /**
      * @return string
      * single ItemPrice
      */
@@ -280,11 +335,11 @@ class TblBasketVerification extends Element
      */
     public function getSummaryPrice()
     {
-        if($this->Quantity !== 0){
+//        if($this->Quantity !== 0){
             $result = $this->Value * $this->Quantity;
-        } else {
-            $result = $this->Value;
-        }
+//        } else {
+//            $result = $this->Value;
+//        }
         return str_replace('.', ',', number_format($result, 2).' €');
     }
 

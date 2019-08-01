@@ -55,6 +55,12 @@ class Standard extends Extension implements IModuleInterface
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/MultiGradebook/Create', 'SPHERE\Application\Api\Document\Creator::createMultiGradebookPdf'
         ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/BillingDocument/Create', 'SPHERE\Application\Api\Document\Creator::createBillingDocumentPdf'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/BillingDocumentWarning/Create', 'SPHERE\Application\Api\Document\Creator::createBillingDocumentWarningPdf'
+        ));
     }
 
     /**
@@ -189,7 +195,8 @@ class Standard extends Extension implements IModuleInterface
                 $Post
             );
         }
-        return Creator::createDataPdf($Data, 'MultiPassword', Creator::PAPERORIENTATION_PORTRAIT);
+
+        return Creator::createMultiPasswordPdf($Data, Creator::PAPERORIENTATION_PORTRAIT);
     }
 
     /**

@@ -86,6 +86,16 @@ class Data extends AbstractData
             $this->updateSettingDescription($tblSetting, 'Dokumente',
                 'Für die Schulbescheinigung kann ein Bild (Logo) hinterlegt werden. Höhe des Bildes (Maximal 120px): [Standard: 90px]');
         }
+        if (($tblSetting = $this->createSetting('Api', 'Document', 'Standard', 'Billing_PictureAddress',
+            TblSetting::TYPE_STRING, ''))) {
+            $this->updateSettingDescription($tblSetting, 'Dokumente',
+                'Für den Belegdruck der Fakturierung kann ein Bild (Logo) hinterlegt werden. Adresse des Bildes: [Standard: ]');
+        }
+        if (($tblSetting = $this->createSetting('Api', 'Document', 'Standard', 'Billing_PictureHeight',
+            TblSetting::TYPE_STRING, ''))) {
+            $this->updateSettingDescription($tblSetting, 'Dokumente',
+                'Für den Belegdruck der Fakturierung kann ein Bild (Logo) hinterlegt werden. Höhe des Bildes (Maximal 150px): [Standard: 90px]');
+        }
         if (($tblSetting = $this->createSetting('Api', 'Document', 'StudentCard_PrimarySchool', 'ShowSchoolName',
             TblSetting::TYPE_BOOLEAN, '1'))) {
             $this->updateSettingDescription($tblSetting, 'Dokumente',
@@ -161,15 +171,23 @@ class Data extends AbstractData
                 'Anzeige der Zensuren im Wortlaut auf Abgangszeugnissen [Standard: Nein]', true);
         }
         if (($tblSetting = $this->createSetting('Education', 'Certificate', 'Prepare', 'ShowParentTitle',
-            TblSetting::TYPE_BOOLEAN, '0'))) {
+            TblSetting::TYPE_BOOLEAN, '1'))) {
             $this->updateSettingDescription($tblSetting, 'Zeugnisse',
-                'Anzeige der Personentitel der Eltern (Wird in Bildungsempfehlungen verwendet): [Standard: Nein]', true);
+                'Anzeige des Personentitels von Sorgeberechtigten in der Bildungsempfehlung [Standard: Ja]', true);
         }
         if (($tblSetting = $this->createSetting('Education', 'Certificate', 'Diploma', 'PreArticleForSchoolName',
             TblSetting::TYPE_STRING, ''))) {
             $this->updateSettingDescription($tblSetting, 'Zeugnisse',
-                'Artikel vor dem Schulnamen auf Abschluszeugnissen (z.B. das): [Standard: ]');
+                'Artikel vor dem Schulnamen auf Abschlusszeugnissen und Abgangszeugnissen (z.B. das): [Standard: ]');
         }
+        $this->createSetting('Education', 'Certificate', 'Diploma', 'AlternateSchoolName', TblSetting::TYPE_STRING,
+            '', 'Zeugnisse', 'Schulname auf Abschlusszeugnissen und Abgangszeugnissen: [Standard: ]');
+        $this->createSetting('Education', 'Certificate', 'Diploma', 'AlternateExtendedSchoolName', TblSetting::TYPE_STRING,
+            '', 'Zeugnisse', 'Schul-Zusatz-Name auf Abschlusszeugnissen und Abgangszeugnissen: [Standard: ]');
+        $this->createSetting('Education', 'Certificate', 'Diploma', 'ShowExtendedSchoolName', TblSetting::TYPE_BOOLEAN,
+            '', 'Zeugnisse', 'Schul-Zusatz-Name von der Institution auf Abschlusszeugnissen und Abgangszeugnissen anzeigen [Standard: Nein]'
+            , true);
+
         if (($tblSetting = $this->createSetting('Education', 'Certificate', 'Prepare', 'HasRemarkBlocking',
             TblSetting::TYPE_BOOLEAN, '1'))
         ) {
@@ -215,6 +233,12 @@ class Data extends AbstractData
             $this->updateSettingDescription($tblSetting, 'Notenbücher',
                 'Anzeige der Zeugnisnote im heruntergeladenen Notenbuch (PDF) [Standard: Ja]', true);
         }
+
+        $this->createSetting('Education', 'Graduation', 'Gradebook', 'IgnoreSchoolType',
+            TblSetting::TYPE_STRING, '', 'Notenbücher',
+            'Eingrenzung der Schüler- und Elternzugänge nach Schulart(en). Festlegung der Zugänge mittels Zahleneingabe.
+             Mehrere Schularten sind mit Komma zu trennen. 1=GS, 2=OS, 3=GYM [Standard: ]'
+            , true);
 
         if (($tblSetting = $this->createSetting('Reporting', 'KamenzReport', 'Validation', 'FirstForeignLanguageLevel',
             TblSetting::TYPE_INTEGER, 1))) {

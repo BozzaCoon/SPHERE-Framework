@@ -343,6 +343,25 @@ class Data extends AbstractData
     }
 
     /**
+     * @param TblPerson $tblPersonFrom
+     * @param TblPerson $tblPersonTo
+     *
+     * @return bool|TblToPerson
+     */
+    public function getRelationshipToPersonByPersonFromAndPersonTo(TblPerson $tblPersonFrom,TblPerson $tblPersonTo)
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+
+        $Entity = $this->getCachedEntityBy(__METHOD__, $Manager, 'TblToPerson', array(
+            TblToPerson::SERVICE_TBL_PERSON_FROM => $tblPersonFrom->getId(),
+            TblToPerson::SERVICE_TBL_PERSON_TO => $tblPersonTo->getId(),
+        ));
+        /** @var TblToPerson $Entity */
+        return ( null === $Entity ? false : $Entity );
+    }
+
+    /**
      * @param integer $Id
      *
      * @return bool|TblToCompany
@@ -379,6 +398,18 @@ class Data extends AbstractData
             $To
         );
         return ( empty( $EntityList ) ? false : $EntityList );
+    }
+
+    /**
+     * @param TblType $tblType
+     *
+     * @return false|TblToPerson[]
+     */
+    public function getPersonRelationshipAllByType(TblType $tblType)
+    {
+        return $this->getCachedEntityListBy(__METHOD__, $this->getEntityManager(), 'TblToPerson', array(
+             TblToPerson::ATTR_TBL_TYPE => $tblType->getId()
+        ));
     }
 
     /**
@@ -649,5 +680,32 @@ class Data extends AbstractData
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param $modifyList
+     *
+     * @return bool
+     */
+    public function updateRelationshipRanking($modifyList)
+    {
+        $Manager = $this->getConnection()->getEntityManager();
+
+        foreach ($modifyList as $ToPersonId => $ranking) {
+            /** @var TblToPerson $Entity */
+            $Entity = $Manager->getEntityById('TblToPerson', $ToPersonId);
+            $Protocol = clone $Entity;
+            if (null !== $Entity) {
+                $Entity->setRanking($ranking);
+
+                $Manager->bulkSaveEntity($Entity);
+                Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(), $Protocol, $Entity, true);
+            }
+        }
+
+        $Manager->flushCache();
+        Protocol::useService()->flushBulkEntries();
+
+        return true;
     }
 }

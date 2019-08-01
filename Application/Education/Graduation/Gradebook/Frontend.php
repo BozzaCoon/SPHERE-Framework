@@ -145,7 +145,8 @@ class Frontend extends FrontendScoreRule
                 $Item['Status'] = $tblGradeType->isActive()
                     ? new SuccessText(new PlusSign().' aktiv')
                     : new \SPHERE\Common\Frontend\Text\Repository\Warning(new MinusSign() . ' inaktiv');
-                $Item['Description'] = $tblGradeType->getDescription();
+                $Item['Description'] = trim($tblGradeType->getDescription()
+                    . ($tblGradeType->isPartGrade() ? new Italic(' (Teilnote)') : ''));
                 $Item['Option'] =
                     (new Standard('', '/Education/Graduation/Gradebook/GradeType/Edit', new Edit(), array(
                         'Id' => $tblGradeType->getId()
@@ -235,8 +236,13 @@ class Frontend extends FrontendScoreRule
                 new FormColumn(
                     new TextField('GradeType[Description]', '', 'Beschreibung'), 12
                 ),
+            )),
+            new FormRow(array(
                 new FormColumn(
-                    new CheckBox('GradeType[IsHighlighted]', 'Fett markiert', 1), 2
+                    new CheckBox('GradeType[IsHighlighted]', 'Fett markiert', 1), 3
+                ),
+                new FormColumn(
+                    new CheckBox('GradeType[IsPartGrade]', 'Teilnote (wird zu einer Note zusammengefasst)', 1), 3
                 )
             )),
         )));
@@ -279,6 +285,7 @@ class Frontend extends FrontendScoreRule
             $Global->POST['GradeType']['Code'] = $tblGradeType->getCode();
             $Global->POST['GradeType']['IsHighlighted'] = $tblGradeType->isHighlighted();
             $Global->POST['GradeType']['Description'] = $tblGradeType->getDescription();
+            $Global->POST['GradeType']['IsPartGrade'] = $tblGradeType->isPartGrade();
 
             $Global->savePost();
         }
@@ -1434,6 +1441,17 @@ class Frontend extends FrontendScoreRule
 
         $tblPersonList = $this->getPersonListForStudent();
 
+        // erlaubte Schularten:
+        $tblSetting = Consumer::useService()->getSetting('Education', 'Graduation', 'Gradebook', 'IgnoreSchoolType');
+        $tblSchoolTypeList = Consumer::useService()->getSchoolTypeBySettingString($tblSetting->getValue());
+        if($tblSchoolTypeList){
+            // erzeuge eine Id Liste, wenn Schularten blokiert werden.
+            foreach ($tblSchoolTypeList as &$tblSchoolTypeControl){
+                $tblSchoolTypeControl = $tblSchoolTypeControl->getId();
+            }
+        }
+
+
         $BlockedList = array();
         // Jahre ermitteln, in denen Schüler in einer Klasse ist
         if ($tblPersonList) {
@@ -1454,6 +1472,15 @@ class Frontend extends FrontendScoreRule
                     /** @var TblDivisionStudent $tblDivisionStudent */
                     foreach ($tblDivisionStudentList as $tblDivisionStudent) {
                         $tblDivision = $tblDivisionStudent->getTblDivision();
+                        // Schulart Prüfung nur, wenn auch Schularten in den Einstellungen erlaubt werden.
+                        if($tblSchoolTypeList && ($tblLevel = $tblDivision->getTblLevel())){
+                            if(($tblSchoolType = $tblLevel->getServiceTblType())){
+                                if(!in_array($tblSchoolType->getId(), $tblSchoolTypeList)){
+                                    // Klassen werden nicht angezeigt, wenn die Schulart nicht freigeben ist.
+                                    continue;
+                                }
+                            }
+                        }
                         if ($tblDivision && ($tblYear = $tblDivision->getServiceTblYear())) {
                             $tblDisplayYearList[$tblYear->getId()] = $tblYear;
                             $data[$tblYear->getId()][$tblPerson->getId()][$tblDivision->getId()] = $tblDivision;
@@ -2088,22 +2115,18 @@ class Frontend extends FrontendScoreRule
                 if (($tblTudorGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TUDOR))
                     && Group::useService()->existsGroupPerson($tblTudorGroup, $tblPerson)
                 ) {
-                    if (($tblGroupAll = Group::useService()->getGroupAll())) {
+                    if (($tblGroupAll = Group::useService()->getTudorGroupAll($tblPerson))) {
                         foreach ($tblGroupAll as $tblGroup) {
-                            if (!$tblGroup->isLocked() && Group::useService()->existsGroupPerson($tblGroup,
-                                    $tblPerson)
-                            ) {
-                                $divisionTable[] = array(
-                                    'Group' => $tblGroup->getName(),
-                                    'Option' => new Standard(
-                                        '', '/Education/Graduation/Gradebook/Gradebook/Teacher/Division/Student', new Select(),
-                                        array(
-                                            'GroupId' => $tblGroup->getId(),
-                                        ),
-                                        'Auswählen'
-                                    )
-                                );
-                            }
+                            $divisionTable[] = array(
+                                'Group' => $tblGroup->getName(),
+                                'Option' => new Standard(
+                                    '', '/Education/Graduation/Gradebook/Gradebook/Teacher/Division/Student', new Select(),
+                                    array(
+                                        'GroupId' => $tblGroup->getId(),
+                                    ),
+                                    'Auswählen'
+                                )
+                            );
                         }
                     }
                 }
@@ -2205,24 +2228,20 @@ class Frontend extends FrontendScoreRule
         $divisionTable = array();
         if ($IsGroup) {
             // tudorGroups
-            if (($tblGroupAll = Group::useService()->getGroupAll())) {
+            if (($tblGroupAll = Group::useService()->getTudorGroupAll())) {
                 foreach ($tblGroupAll as $tblGroup) {
-                    if (!$tblGroup->isLocked()
-                        && $tblGroup->getTudors()
-                    ) {
-                        $divisionTable[] = array(
-                            'Year' => '',
-                            'Type' => '',
-                            'Group' => $tblGroup->getName(),
-                            'Option' => new Standard(
-                                '', '/Education/Graduation/Gradebook/Gradebook/Headmaster/Division/Student', new Select(),
-                                array(
-                                    'GroupId' => $tblGroup->getId(),
-                                ),
-                                'Auswählen'
-                            )
-                        );
-                    }
+                    $divisionTable[] = array(
+                        'Year' => '',
+                        'Type' => '',
+                        'Group' => $tblGroup->getName(),
+                        'Option' => new Standard(
+                            '', '/Education/Graduation/Gradebook/Gradebook/Headmaster/Division/Student', new Select(),
+                            array(
+                                'GroupId' => $tblGroup->getId(),
+                            ),
+                            'Auswählen'
+                        )
+                    );
                 }
             }
 
@@ -2982,7 +3001,7 @@ class Frontend extends FrontendScoreRule
     {
 
         $tblGroup = false;
-        $tblGroupTudor = Group::useService()->getGroupByMetaTable('TUDOR');
+        $tblGroupTudor = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TUDOR);
         if (($tblDivision = Division::useService()->getDivisionById($DivisionId))
             || ($tblGroup = Group::useService()->getGroupById($GroupId))
         ) {

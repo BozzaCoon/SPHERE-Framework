@@ -284,6 +284,19 @@ class Service extends AbstractService
         return false;
     }
 
+
+    /**
+     * @param string $FirstName
+     * @param string $LastName
+     *
+     * @return bool|TblPerson[]
+     */
+    public function getPersonAllByName($FirstName, $LastName)
+    {
+
+        return (new Data($this->getBinding()))->getPersonAllByFirstNameAndLastName($FirstName, $LastName);
+    }
+
     /**
      * @param $Name
      *
@@ -378,9 +391,10 @@ class Service extends AbstractService
         if (( $persons = (new Data($this->getBinding()))->getPersonAllByFirstNameAndLastName($FirstName, $LastName) )
         ) {
             foreach ($persons as $person) {
-                if (( $addresses = Address::useService()->getAddressAllByPerson($person) )) {
+                if (( $addresses = Address::useService()->getAddressAllByPerson($person, true) )) {
                     if ($addresses[0]->getTblAddress()->getTblCity()->getCode() == $ZipCode) {
                         $exists = $person;
+                        break;
                     }
                 }
             }

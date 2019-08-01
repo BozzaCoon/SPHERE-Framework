@@ -2,6 +2,8 @@
 
 namespace SPHERE\Application\Billing\Inventory;
 
+use SPHERE\Application\Billing\Inventory\Document\Document;
+use SPHERE\Application\Billing\Inventory\Import\Import;
 use SPHERE\Application\Billing\Inventory\Item\Item;
 use SPHERE\Application\Billing\Inventory\Setting\Setting;
 use SPHERE\Application\IApplicationInterface;
@@ -24,9 +26,11 @@ class Inventory implements IApplicationInterface
          */
         Setting::registerModule();
         Item::registerModule();
+        Document::registerModule();
+        Import::registerModule();
 
         Main::getDisplay()->addApplicationNavigation(
-            new Link(new Link\Route(__NAMESPACE__), new Link\Name('Einstellung'))
+            new Link(new Link\Route(__NAMESPACE__), new Link\Name('Einstellungen'))
         );
 
         /**
