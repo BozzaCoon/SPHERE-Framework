@@ -4,6 +4,8 @@ namespace SPHERE\Application\Api\Platform\Gatekeeper;
 use SPHERE\Application\Api\ApiTrait;
 use SPHERE\Application\Api\Dispatcher;
 use SPHERE\Application\IApiInterface;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Access\Access;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Access\Service\Entity\TblRole;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Account;
 use SPHERE\Application\Setting\Authorization\Group\Group;
 use SPHERE\Common\Frontend\Ajax\Emitter\ServerEmitter;
@@ -13,6 +15,7 @@ use SPHERE\Common\Frontend\Ajax\Receiver\InlineReceiver;
 use SPHERE\Common\Frontend\Ajax\Receiver\ModalReceiver;
 use SPHERE\Common\Frontend\Ajax\Template\CloseModal;
 use SPHERE\Common\Frontend\Form\Repository\Button\Close;
+use SPHERE\Common\Frontend\Form\Repository\Field\CheckBox;
 use SPHERE\Common\Frontend\Form\Repository\Field\TextArea;
 use SPHERE\Common\Frontend\Form\Repository\Field\TextField;
 use SPHERE\Common\Frontend\Form\Structure\Form;
@@ -21,7 +24,9 @@ use SPHERE\Common\Frontend\Form\Structure\FormGroup;
 use SPHERE\Common\Frontend\Form\Structure\FormRow;
 use SPHERE\Common\Frontend\Icon\Repository\Disable;
 use SPHERE\Common\Frontend\Icon\Repository\Enable;
+use SPHERE\Common\Frontend\Icon\Repository\Publicly;
 use SPHERE\Common\Frontend\Icon\Repository\Save;
+use SPHERE\Common\Frontend\Icon\Repository\YubiKey;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
 use SPHERE\Common\Frontend\Layout\Repository\Well;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
@@ -33,7 +38,9 @@ use SPHERE\Common\Frontend\Link\Repository\Standard;
 use SPHERE\Common\Frontend\Message\Repository\Danger;
 use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Frontend\Table\Structure\TableData;
+use SPHERE\Common\Frontend\Text\Repository\Bold;
 use SPHERE\System\Extension\Extension;
+use SPHERE\System\Extension\Repository\Sorter\StringGermanOrderSorter;
 
 /**
  * Class ApiUserGroup
@@ -62,6 +69,9 @@ class ApiUserGroup extends Extension implements IApiInterface
 
 //        $Dispatcher->registerMethod('pieceAddUser');
 //        $Dispatcher->registerMethod('pieceRemoveUser');
+
+        $Dispatcher->registerMethod('showChooseRight');
+        $Dispatcher->registerMethod('saveChooseRight');
 
         $Dispatcher->registerMethod('showUserGroup');
         $Dispatcher->registerMethod('saveGroup');
@@ -183,6 +193,53 @@ class ApiUserGroup extends Extension implements IApiInterface
     /**
      * @param string $Identifier
      * @param string $GroupId
+     *
+     * @return Pipeline
+     */
+    public static function pipelineShowChooseRight($Identifier = '', $GroupId = '')
+    {
+
+        $pipeline = new Pipeline();
+        $emitter = new ServerEmitter(self::getModalReceiver($Identifier), self::getEndpoint());
+        $emitter->setGetPayload(array(
+            self::API_DISPATCHER => 'showChooseRight',
+        ));
+        $emitter->setPostPayload(array(
+            'Identifier' => $Identifier,
+            'GroupId' => $GroupId,
+        ));
+        $pipeline->appendEmitter($emitter);
+
+        return $pipeline;
+    }
+
+    /**
+     * @param string $Identifier
+     * @param string $GroupId
+     *
+     * @return Pipeline
+     */
+    public static function pipelineSaveChooseRight($Identifier, $GroupId = '')
+    {
+
+
+        $pipeline = new Pipeline();
+        $emitter = new ServerEmitter(self::getModalReceiver($Identifier), self::getEndpoint());
+        $emitter->setGetPayload(array(
+            self::API_DISPATCHER => 'saveChooseRight',
+        ));
+        $emitter->setPostPayload(array(
+            'Identifier' => $Identifier,
+            'GroupId' => $GroupId,
+        ));
+        $pipeline->appendEmitter($emitter);
+
+        return $pipeline;
+    }
+
+    /**
+     * @param string $Identifier
+     * @param string $GroupId
      * @param int    $Confirm
      *
      * @return Pipeline
@@ -265,6 +322,71 @@ class ApiUserGroup extends Extension implements IApiInterface
         } else {
             return new Danger('Benutzergruppe konnte nicht gengelegt werden');
         }
+    }
+
+    /**
+     * @param string $Identifier
+     * @param string $GroupId
+     *
+     * @return Form
+     */
+    public function showChooseRight($Identifier, $GroupId = '')
+    {
+
+
+        // Role
+        $tblRoleAll = Access::useService()->getRoleAll();
+        $tblRoleAll = $this->getSorter($tblRoleAll)->sortObjectBy(TblRole::ATTR_NAME, new StringGermanOrderSorter());
+        $SelectBoxList = array();
+        if ($tblRoleAll) {
+            array_walk($tblRoleAll, function (TblRole $tblRole) use (&$SelectBoxList){
+                if (!$tblRole->isInternal()) {
+                    if (!$tblRole->isIndividual()
+                        || (
+                            ($tblAccount = \SPHERE\Application\Setting\Authorization\Account\Account::useService()->getAccountBySession())
+                            && ($tblConsumer = $tblAccount->getServiceTblConsumer())
+                            && (Access::useService()->getRoleConsumerBy($tblRole, $tblConsumer))
+                        )
+                    ) {
+                        $SelectBoxList[] = new CheckBox('RightList[' . $tblRole->getId() . ']',
+                            ($tblRole->isSecure() ? new YubiKey() : new Publicly()) . ' ' . $tblRole->getName(),
+                            $tblRole->getId()
+                        );
+                    }
+                }
+            });
+        }
+
+        $GroupName = 'Konnte nicht ausgelesen werden';
+        if(($tblGroup = Group::useService()->getGroupById($GroupId))){
+            $GroupName = $tblGroup->getName();
+        }
+
+        return new Form(
+            new FormGroup(
+                new FormRow(
+                    new FormColumn(new Panel('Rollen für die Gruppe '.new Bold($GroupName),
+                            $SelectBoxList, Panel::PANEL_TYPE_INFO
+                    ))
+                )
+            ), (new Primary('Speichern', self::getEndpoint(), new Save()))
+                ->ajaxPipelineOnClick(self::pipelineSaveChooseRight($Identifier, $GroupId))
+            .new Close('Abbrechen')
+        );
+    }
+
+    /**
+     * @param string $Identifier
+     * @param string $GroupId
+     * @param array  $RightList
+     *
+     * @return mixed
+     */
+    public function saveChooseRight($Identifier, $GroupId = '', $RightList = array())
+    {
+
+        // TODO Speicherort (Gatekeeper oder pro Mandant muss noch entschieden werden)
+        return print_r($RightList, true);
 
     }
 

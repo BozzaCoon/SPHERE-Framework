@@ -45,6 +45,7 @@ class Frontend extends Extension implements IFrontendInterface
 //        $receiverGroupList = new BlockReceiver();
         $receiverCreateModal = ApiUserGroup::getModalReceiver('create', new PlusSign() . ' Neue Benutzergruppe anlegen', new Close());
         $receiverEditModal = ApiUserGroup::getModalReceiver('edit', new Pencil() . ' Benutzergruppe bearbeiten', new Close());
+        $receiverChooseModal = ApiUserGroup::getModalReceiver('choose', new Pencil() . ' Benutzergruppe Rechte bearbeiten', new Close());
         $receiverDestroyModal = ApiUserGroup::getModalReceiver('destroy', new Remove() . ' Benutzergruppe entfernen', new Close());
 //        $receiverModalEdit = new ModalReceiver( 'Gruppe bearbeiten', new Close() );
 //        $receiverModalDestroy = new ModalReceiver( 'Sind Sie sicher?' );
@@ -52,6 +53,7 @@ class Frontend extends Extension implements IFrontendInterface
         $Stage->setContent(
             $receiverCreateModal
             .$receiverEditModal
+            .$receiverChooseModal
             .$receiverDestroyModal
             .ApiUserGroup::getServiceReceiver()
             .new Layout(
@@ -88,6 +90,7 @@ class Frontend extends Extension implements IFrontendInterface
                 $item['Option'] = (new Standard('', ApiUserGroup::getEndpoint(), new Edit()))
                     ->ajaxPipelineOnClick(ApiUserGroup::pipelineShowUserGroup('edit', array(), $tblGroup->getId()))
                 .(new Standard('', ApiUserGroup::getEndpoint(), new CogWheels()))
+                ->ajaxPipelineOnClick(ApiUserGroup::pipelineShowChooseRight('choose', $tblGroup->getId()))
                 .(new Standard('', ApiUserGroup::getEndpoint(), new Remove()))
                 ->ajaxPipelineOnClick(ApiUserGroup::pipelineDestroyGroup('destroy', $tblGroup->getId()));
 
