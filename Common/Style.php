@@ -116,6 +116,10 @@ class Style extends Extension
                 $this->setSource('/Common/Style/Application.Correction.css', false, true);
                 $this->setSource('/Common/Style/Application.DataTable.Correction.css', false, true);
                 break;
+            case 3:
+                $this->setSource('/Common/Style/CorrectionDark.css', false, true);
+                $this->setSource('/Common/Style/DataTable.Correction.css', false, true);
+                break;
             default:
                 $this->setSource('/Common/Style/Correction.css', false, true);
                 $this->setSource('/Common/Style/DataTable.Correction.css', false, true);

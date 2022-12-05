@@ -9,6 +9,7 @@ use SPHERE\Application\Contact\Phone\Service\Entity\TblToCompany as TblToCompany
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Account;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblAuthorization;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblIdentification;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Consumer;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Service\Entity\TblConsumer;
 use SPHERE\Application\Setting\Consumer\Responsibility\Responsibility;
@@ -227,6 +228,13 @@ class Frontend extends Extension implements IFrontendInterface
 
         $tblConsumer = Consumer::useService()->getConsumerBySession();
 
+        if($tblAccount->getServiceTblIdentification()->getName() == TblIdentification::NAME_SYSTEM){
+            $styleSelectList = array(1 => 'Webseite', 2 => 'Anwendung', 3 => 'Webseite (dark)');
+        } else {
+            $styleSelectList = array(1 => 'Webseite', 2 => 'Anwendung');
+        }
+
+
         $Stage->setContent(
             new Layout(
                 new LayoutGroup(
@@ -244,7 +252,7 @@ class Frontend extends Extension implements IFrontendInterface
                                                             new SelectBox(
                                                                 'Setting[Surface]',
                                                                 'Aussehen der Programmoberfläche',
-                                                                array(1 => 'Webseite', 2 => 'Anwendung')
+                                                                $styleSelectList
                                                             ),
                                                         )
                                                         , Panel::PANEL_TYPE_INFO),
