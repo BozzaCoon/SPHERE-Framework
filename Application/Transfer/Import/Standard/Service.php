@@ -248,13 +248,13 @@ class Service
             // additional
             'Eintritt_Kind'          => null,
             'Staatliche_Stammschule' => null,
-            'Einschulungsart'        => null,   //
+            'Einschulungsart'        => null,
             'Kind_Bemerkung'         => null,   // Personenbemerkung nach Import vielleicht nochmal in Schüler_Bemerkung umbenennen
-            'Kindergarten'           => null,   // ToDO was wird mit Wahr/Falsch?
+            'Kindergarten'           => null,
 
             // Zusatz EKBO -> ESBZ
-            'CUST_UserName'    => null,
-            'ImpUserName'      => null,
+//            'CUST_UserName'    => null,
+//            'ImpUserName'      => null,
             'BC_Kontakt_Nr'    => null,
             'S1_BC_Kontakt_Nr' => null,
             'S1_E_Mail_privat' => null,
@@ -263,7 +263,9 @@ class Service
 //            'KL'               => null,
 //            'Team'             => null,
 //            'Gruppe'           => null,
-//            'Hort_Modul'       => null,
+            'Gruppen'          => null,
+            'Hortmodul'        => null,
+            'Hort-Text'        => null,
         );
 
         $unKnownColumns = array();
@@ -354,11 +356,20 @@ class Service
 //                    $group = 'Gruppe '.$group;
 //                    $this->setPersonGroup($tblPerson, $group);
 //                }
-//                $HortModule = $this->getValue('Hort_Modul');
-//                if($HortModule){
-//                    $HortModule = 'Hort '.$HortModule.'h';
-//                    $this->setPersonGroup($tblPerson, $HortModule);
+//                $groups = $this->getValue('Gruppen');
+//                if($groups){
+//                    if(($GroupList = explode(', ', $groups))){
+//                        foreach($GroupList as $GroupString){
+//                            $GroupString = 'Gruppe '.$GroupString;
+//                            $this->setPersonGroup($tblPerson, $GroupString);
+//                        }
+//                    }
 //                }
+                $HortModule = $this->getValue('Hortmodul');
+                if($HortModule){
+                    $HortModule = 'Hort '.$HortModule.(is_int($HortModule) ? 'h' : '');
+                    $this->setPersonGroup($tblPerson, $HortModule);
+                }
 ////            }
 //            $Group = $this->getValue('Gruppe');
 //            if($Group !== ''){
@@ -384,6 +395,10 @@ class Service
             $remark = $this->getValue('Abholberechtigte');
             if ($remark != '') {
                 $remarkString .= 'Abholberechtigte: ' . $remark;
+            }
+            $HortText = $this->getValue('Hort-Text');
+            if($HortText){
+                $remarkString .= $HortText;
             }
             $contactNumber = $this->getValue('BC_Kontakt_Nr');
 
@@ -1177,6 +1192,12 @@ class Service
                 if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESBZ')){
                     $Location['BC_Kontakt_Nr'] = null;
                 }
+                if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESFHG')
+                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESP')
+                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESB')
+                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'EVZ')){
+                    $Location['PNR'] = null;
+                }
                 for ($RunX = 0; $RunX < $X; $RunX++) {
                     $Value = trim($Document->getValue($Document->getCell($RunX, 1)));
                     if (array_key_exists($Value, $Location)) {
@@ -1214,6 +1235,15 @@ class Service
                                 $isTeacher = true;
                             }
                             $this->setGroupStaff($tblPerson, $isTeacher);
+                            // Update Remark
+                            if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESFHG')
+                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESP')
+                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESB')
+                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'EVZ')){
+                                $remark = 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['PNR'], $RunY)));
+                                $this->setUpdateCommonRemark($tblPerson, $remark);
+                            }
+
                         } else {
                             // nicht vorhandene Personen werden angelegt
                             $salutation = trim($Document->getValue($Document->getCell($Location['Anrede'], $RunY)));
@@ -1238,6 +1268,12 @@ class Service
                             // EKBO -> ESBZ "die Personalnummer => kommt in die Personenbemerkung"
                             if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESBZ')){
                                 $remark .= 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['BC_Kontakt_Nr'], $RunY)));
+                            }
+                            if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESFHG')
+                             || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESP')
+                             || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESB')
+                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'EVZ')){
+                                $remark .= 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['PNR'], $RunY)));
                             }
                             $this->setPersonBirth($tblPerson, $birth, $birthPlace, $gender, $nationality, $denomination, $remark, '', $RunY, $Nr, $error);
 
@@ -1362,6 +1398,7 @@ class Service
                     'Ortsteil'                  => null,
                     'Tel_Geschäftlich_Festnetz' => null,
                     'Tel_Geschäftlich_Mobil'    => null,
+                    'Fax_Geschäftlich'          => null,
                     'E-Mail_Geschäftlich'       => null,
                     'Internetadresse'           => null,
                     'Bemerkung'                 => null,
@@ -1423,7 +1460,8 @@ class Service
 
                         $Phone_F = trim($Document->getValue($Document->getCell($Location['Tel_Geschäftlich_Festnetz'], $RunY)));
                         $Phone_M = trim($Document->getValue($Document->getCell($Location['Tel_Geschäftlich_Mobil'], $RunY)));
-                        $this->setCompanyPhone($tblCompany, $Phone_F, $Phone_M);
+                        $Fax_G = trim($Document->getValue($Document->getCell($Location['Fax_Geschäftlich'], $RunY)));
+                        $this->setCompanyPhone($tblCompany, $Phone_F, $Phone_M, $Fax_G);
 
                         $Mail_B = trim($Document->getValue($Document->getCell($Location['E-Mail_Geschäftlich'], $RunY)));
                         $this->setCompanyMail($tblCompany, $Mail_B);
@@ -1570,9 +1608,7 @@ class Service
 
         if ($streetName !== '' && $streetNumber !== '' && $cityCode && $city
         ) {
-            Address::useService()->insertAddressToCompany(
-                $tblCompany, $streetName, $streetNumber, $cityCode, $city, $district, ''
-            );
+            Address::useService()->insertAddressToCompany($tblCompany, $streetName, $streetNumber, $cityCode, $city, $district);
         } else {
             $error[] = new DangerText(($Nr ? 'Nr.: '.$Nr : 'Zeile: '.($RunY + 1))).' '.$tblCompany->getDisplayName().' Adresse konnte nicht angelegt werden.';
         }
@@ -1585,7 +1621,7 @@ class Service
      *
      * @return void
      */
-    private function setCompanyPhone(TblCompany $tblCompany, $Phone_F, $Phone_M)
+    private function setCompanyPhone(TblCompany $tblCompany, $Phone_F, $Phone_M, $Fax_G)
     {
 
         if($Phone_F){
@@ -1595,6 +1631,10 @@ class Service
         if($Phone_M){
             $tblType = Phone::useService()->getTypeByNameAndDescription(TblTypePhone::VALUE_NAME_BUSINESS, TblTypePhone::VALUE_DESCRIPTION_MOBILE);
             Phone::useService()->insertPhoneToCompany($tblCompany, $Phone_M, $tblType, '');
+        }
+        if($Fax_G){
+            $tblType = Phone::useService()->getTypeByNameAndDescription(TblTypePhone::VALUE_NAME_FAX, TblTypePhone::VALUE_NAME_BUSINESS);
+            Phone::useService()->insertPhoneToCompany($tblCompany, $Fax_G, $tblType, '');
         }
     }
 
@@ -1708,7 +1748,7 @@ class Service
      * @param string $lastName
      * @param string $memberNumber
      * @param string $assistance
-     *
+     * @param string $contactNumber
      * @return bool|TblPerson
      */
     private function setPersonCustody($salutation, $title, $firstName, $lastName, $memberNumber, $assistance, $contactNumber = '')
@@ -1768,7 +1808,6 @@ class Service
             '',
             $isAssistance,
             $assistance,
-            '',
             '',
             $contactNumber
         );
@@ -1833,6 +1872,21 @@ class Service
             $remark,
             $contactNumber
         );
+    }
+
+    /**
+     * @param TblPerson $tblPerson
+     * @param string $remark
+     * @return void
+     */
+    private function setUpdateCommonRemark(TblPerson $tblPerson, string $remark = '')
+    {
+        if(($tblCommon = Common::useService()->getCommonByPerson($tblPerson))){
+            if($remark){
+                $remark = ($tblCommon->getRemark() ? $tblCommon->getRemark().'<br/>' : '').$remark;
+                Common::useService()->insertUpdateCommon($tblCommon, $remark);
+            }
+        }
     }
 
     /**

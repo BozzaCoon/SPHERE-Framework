@@ -192,7 +192,7 @@ class Frontend extends Extension implements IFrontendInterface
     {
 
         $YearList = array();
-        for ($i = -1; $i < 5; $i++) {
+        for ($i = -2; $i < 5; $i++) {
             $this->addYear($YearList, $i);
         }
 
@@ -873,6 +873,9 @@ class Frontend extends Extension implements IFrontendInterface
                     $global->POST['Data'] = $tblState->getId();
                     $global->savePost();
                 }
+            }
+            if (($tblState = BasicData::useService()->getStateByName('Niedersachsen'))) {
+                $list[$tblState->getId()] = $tblState->getName();
             }
 
             $form = new Form(new FormGroup(new FormRow(new FormColumn(

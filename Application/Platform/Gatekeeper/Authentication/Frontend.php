@@ -201,6 +201,14 @@ class Frontend extends Extension implements IFrontendInterface
                 if(Consumer::useService()->getConsumerLoginListByConsumer($tblConsumer)){
                     $isConsumerLogin = true;
                 }
+                // Vidis temporär Login auf der Demo-Version
+                if( strtolower($this->getRequest()->getHost()) == 'demo.schulsoftware.schule'
+                    || $this->getRequest()->getHost() == '192.168.202.230'
+                ){
+                    if($tblConsumer->getAcronym() == 'DEMO'){
+                        $isConsumerLogin = true;
+                    }
+                }
             }
         }
 
@@ -394,24 +402,23 @@ class Frontend extends Extension implements IFrontendInterface
         // Create Form
         $Form = new Form(
             new FormGroup(array(
-                    new FormRow(
-                        new FormColumn(array(
-                            new Headline('Anmeldung Schulsoftware'),
-                            new Ruler(),
-                            new Listing(array(
-                                new Container($CredentialNameField) .
-                                new Container($CredentialLockField)
-                            )),
-                            $FormError
-                        ))
-                    ),
-                    new FormRow(
-                        new FormColumn(array(
-                            (new Primary('Login')),
-                        ))
-                    )
+                new FormRow(
+                    new FormColumn(array(
+                        new Headline('Anmeldung Schulsoftware'),
+                        new Ruler(),
+                        new Listing(array(
+                            new Container($CredentialNameField) .
+                            new Container($CredentialLockField)
+                        )),
+                        $FormError
+                    ))
+                ),
+                new FormRow(
+                    new FormColumn(array(
+                        (new Primary('Login')),
+                    ))
                 )
-            )
+            ))
         );
 
         // set depending information
@@ -429,14 +436,21 @@ class Frontend extends Extension implements IFrontendInterface
 
                 ))
             )));
-        } elseif(strtolower($this->getRequest()->getHost()) == 'www.demo.schulsoftware.schule'){
-//            $Form.= new Layout(new LayoutGroup(new LayoutRow(
-//                new LayoutColumn(array(
-//                    '<br/><br/><br/><br/>',
-//                    new Title('Anmeldung UCS Demo (Pilot)'),
-//                    new PrimaryLink('Login', 'SPHERE\Application\Platform\Gatekeeper\Saml\Login\DLLPDemo')
-//                ))
-//            )));
+        } elseif( strtolower($this->getRequest()->getHost()) == 'demo.schulsoftware.schule'
+        || $this->getRequest()->getHost() == '192.168.202.230'
+        ){
+            // Vidis temporär Login auf der Demo-Version
+            $Form.= new Layout(new LayoutGroup(new LayoutRow(
+                new LayoutColumn(array(
+                    '<br/><br/><br/><br/>',
+                    new Title('Anmeldung Vidis Demo'),
+                        (new PrimaryLink('Login', '/Platform/Gatekeeper/OAuth2/OAuthSite'))->setExternal()
+                    .'<script src="https://repo.vidis.schule/repository/vidis-cdn/latest/vidisLogin.umd.js"></script>'
+//                    // size L/M/S
+//                    // cookie = "true" (zum testen erstmal false)
+                    .'<vidis-login Size = "L" cookie = "true" loginurl="http://demo.schulsoftware.schule/Platform/Gatekeeper/OAuth2/OAuthSite"></vidis-login>'
+                ))
+            )));
         }
 
         setcookie('cookies_available', 'enabled', time() + (86400 * 365), '/');
@@ -496,11 +510,18 @@ class Frontend extends Extension implements IFrontendInterface
         $tblAccount = null;
         $LoginOk = false;
 
-        if(isset($_SESSION['samlUserdata']['ucsschoolRecordUID']) && $_SESSION['samlUserdata']['ucsschoolRecordUID']){
-//            var_dump($_SESSION['samlUserdata']);
+        if(isset($_SESSION['samlUserdata']['uid']) && !empty($_SESSION['samlUserdata']['uid'])){
             $AccountNameAPI = current($_SESSION['samlUserdata']['uid']);
+        } else {
+            $AccountNameAPI = new Bold('UCS missing (uid)');
+        }
+
+        if(isset($_SESSION['samlUserdata']['ucsschoolRecordUID']) && $_SESSION['samlUserdata']['ucsschoolRecordUID']){
+//            $AccountNameAPI = current($_SESSION['samlUserdata']['uid']);
             $AccountId = current($_SESSION['samlUserdata']['ucsschoolRecordUID']);
             $tblAccount = Account::useService()->getAccountById($AccountId);
+        } else {
+            $AccountId = new Bold('UCS missing (ucsschoolRecordUID)');
         }
 
         // AccountId gegen Prüfung
@@ -536,7 +557,6 @@ class Frontend extends Extension implements IFrontendInterface
             if($Session = session_id()){
                 Account::useService()->destroySession(null, $Session);
             }
-
         }
 
         $tblIdentification = null;
@@ -561,8 +581,13 @@ class Frontend extends Extension implements IFrontendInterface
             }
         }
 
+        $detailInfo = '';
+        if(isset($AccountNameAPI) || isset($AccountId)){
+            $detailInfo = '( '.(isset($AccountNameAPI)? $AccountNameAPI: '').' [ '.(isset($AccountId)? $AccountId: '').' ]'.' )';
+        }
+
         $Stage->setContent(new Layout(new LayoutGroup(new LayoutRow(
-            new LayoutColumn(new Warning('Ihr Login von UCS ist im System nicht bekannt, bitte wenden Sie sich an einen zuständigen Administrator'))
+            new LayoutColumn(new Warning('Ihr Login von UCS '.$detailInfo.' ist im System nicht bekannt, bitte wenden Sie sich an einen zuständigen Administrator'))
         ))));
 
         return $Stage;

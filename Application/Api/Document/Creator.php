@@ -27,6 +27,7 @@ use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\PrimarySchoo
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\SecondarySchool;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\StudentCardNew;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentTransfer;
+use SPHERE\Application\Api\Document\Standard\Repository\StaffAccidentReport\StaffAccidentReport;
 use SPHERE\Application\Billing\Bookkeeping\Balance\Balance;
 use SPHERE\Application\Billing\Bookkeeping\Invoice\Invoice;
 use SPHERE\Application\Billing\Inventory\Document\Service\Entity\TblDocument;
@@ -660,7 +661,9 @@ class Creator extends Extension
             if ($DocumentName == 'AccidentReport') {
                 $Document = new AccidentReport($Data);
             }
-
+            if ($DocumentName == 'StaffAccidentReport'){
+                $Document = new StaffAccidentReport($Data);
+            }
             if ($Document) {
                 $File = self::buildDummyFile($Document, array(), array(), $paperOrientation);
 
@@ -948,7 +951,6 @@ class Creator extends Extension
             if (!empty($PriceList)) {
                 $Data['CompanyAddress'] = $Data['CompanyStreet'] . '<br/>' . $Data['CompanyCity']
                     . ($Data['CompanyDistrict'] ? '  OT ' . $Data['CompanyDistrict'] : '');
-
                 $template = new Billing($tblItem, $Data);
                 $pageList = array();
 
@@ -984,40 +986,17 @@ class Creator extends Extension
                                     } else {
                                         $TotalPrice = '0,00 €';
                                     }
+                                    $InvoiceNumber = '';
+                                    if(isset($Value['InvoiceNumber'])){
+                                        $InvoiceNumber = $Value['InvoiceNumber'];
+                                    }
 
-                                    $pageList[] = $template->buildPage($tblPersonDebtor, $tblPersonCauser, $TotalPrice);
-//                                    $Content = $template->createSingleDocument(
-//                                        $tblPersonDebtor, $tblPersonCauser, $TotalPrice
-//                                    );
-                                    // Create Tmp
-//                                    $File = Storage::createFilePointer('pdf', 'SPHERE-Temporary-short', false);
-//                                    $clone[] = clone $File;
-//                                    // build before const is set (picture)
-//                                    /** @var DomPdf $Document */
-//                                    $Document = PdfDocument::getPdfDocument($File->getFileLocation());
-//                                    $Document->setContent($Content);
-//                                    $Document->saveFile(new FileParameter($File->getFileLocation()));
-//                                    // hinzufügen für das mergen
-//                                    $PdfMerger->addPDF($File);
-//                                    // speichern der Files zum nachträglichem bereinigen
-//                                    $FileList[] = $File;
+                                    $pageList[] = $template->buildPage($tblPersonDebtor, $tblPersonCauser, $TotalPrice, $InvoiceNumber);
                                 }
                             }
                         }
                     }
                 }
-
-//                $MergeFile = Storage::createFilePointer('pdf');
-//                // mergen aller hinzugefügten PDF-Datein
-//                $PdfMerger->mergePdf($MergeFile);
-
-//                if (!empty($FileList)) {
-//                    // aufräumen der Temp-Files
-//                    /** @var FilePointer $File */
-//                    foreach ($FileList as $File) {
-//                        $File->setDestruct();
-//                    }
-//                }
 
                 $File = self::buildDummyFile($template, array(), $pageList);
                 $FileName = 'Bescheinigung_' . $tblItem->getName() . ($isList ? '_Liste_' . ($list + 1) : '') . '_' . date("Y-m-d") . ".pdf";
@@ -1177,7 +1156,7 @@ class Creator extends Extension
         if($Select == 'Help'){
             $file = "Common/Style/Resource/Document/Manual/SSWHelp.pdf";
             header("Content-Type: application/pdf");
-            header("Content-Disposition: attachment; filename=Hilfe_Schulsoftware_25.11.2021.pdf");
+            header("Content-Disposition: attachment; filename=Hilfe_Schulsoftware_18.04.2023.pdf");
             header("Content-Length: ".filesize($file));
         } elseif($Select == 'UserRole') {
             $file = "Common/Style/Resource/Document/Manual/SSWUserRole.pdf";
@@ -1202,7 +1181,7 @@ class Creator extends Extension
         } elseif($Select == 'ESDi') {
             $file = "Common/Style/Resource/Document/Manual/SSW_ESDiLeistungsbeschreibung.pdf";
             header("Content-Type: application/pdf");
-            header("Content-Disposition: attachment; filename=ESDi_Leistungsbeschreibung.pdf");
+            header("Content-Disposition: attachment; filename=ESDi_Leistungsbeschreibung_16.01.2023.pdf");
             header("Content-Length: ".filesize($file));
         } elseif($Select == 'Indiware') {
             $file = "Common/Style/Resource/Document/Manual/Indiware_Leitfaden.pdf";
@@ -1217,7 +1196,7 @@ class Creator extends Extension
         } elseif($Select == 'SSW_UCS_DLLP') {
             $file = "Common/Style/Resource/Document/Manual/SSW_UCS_DLLP.pdf";
             header("Content-Type: application/pdf");
-            header("Content-Disposition: attachment; filename=Kurzleidfaden_UCS_DLLP_10.11.2022.pdf");
+            header("Content-Disposition: attachment; filename=Kurzleidfaden_UCS_DLLP_11.05.2023.pdf");
             header("Content-Length: ".filesize($file));
         }
 

@@ -251,12 +251,12 @@ class Service extends AbstractService
             $NameList = explode(' ', $FirstName);
             $count = count($NameList);
             $SecondName = '';
-            if($count ==  2){
+            if($count == 2){
                 $FirstName = $NameList[0];
                 $SecondName = $NameList[1];
             } elseif($count > 2) {
                 $FirstName = $NameList[0];
-                for($i = 1; $i <= $count; $i++){
+                for($i = 1; $i < $count; $i++){
                     $SecondName .= $NameList[$i];
                 }
             }
@@ -1481,7 +1481,7 @@ class Service extends AbstractService
                 $tblPersonList = array();
 
                 $tblType = Mail::useService()->getTypeById($item['Type']);
-                $address = $item['Address'];
+                $address = $this->validateMailAddress($item['Address']);
                 $remark = $item['Remark'];
                 $isAccountUserAlias = isset($item['IsAccountUserAlias']);
                 $isAccountRecoveryMail = isset($item['IsAccountRecoveryMail']);
@@ -1499,7 +1499,7 @@ class Service extends AbstractService
                 if ($tblType || $address || $remark) {
                     $isAdd = true;
                     $this->setMessage($tblType, $key, 'Type', 'Bitte wählen Sie einen Typ aus.', $Errors, $errorMail);
-                    $this->setMessage($address, $key, 'Address', 'Bitte geben Sie eine E-Mail Adresse ein.', $Errors, $errorMail);
+                    $this->setMessage($address, $key, 'Address', 'Bitte geben Sie eine gültige E-Mail Adresse an', $Errors, $errorMail);
 
                     if ($countPersons == 0) {
                         $errorMail = true;
@@ -1577,6 +1577,7 @@ class Service extends AbstractService
                     $address['CityCode'],
                     $address['CityName'],
                     $address['CityDistrict'],
+                    '',
                     $address['County'],
                     $address['Nation'],
                     $address['tblPersonList'],

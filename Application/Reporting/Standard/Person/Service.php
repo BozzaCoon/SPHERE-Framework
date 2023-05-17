@@ -23,6 +23,7 @@ use SPHERE\Application\Education\Lesson\Division\Service\Entity\TblDivision;
 use SPHERE\Application\Education\Lesson\Division\Service\Entity\TblDivisionSubject;
 use SPHERE\Application\Education\Lesson\Division\Service\Entity\TblDivisionTeacher;
 use SPHERE\Application\Education\Lesson\Division\Service\Entity\ViewDivisionStudent;
+use SPHERE\Application\Education\Lesson\Term\Service\Entity\TblYear;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\ViewYear;
 use SPHERE\Application\Education\Lesson\Term\Term;
 use SPHERE\Application\Education\School\Type\Type;
@@ -3024,7 +3025,7 @@ class Service extends Extension
                     }
 
                     // Definition mit leerwerten wird für das Frontend benötigt
-                    $TypeList = array('Sorgeberechtigt' => 3, 'Vormund' => 3, 'Bevollmächtigt' => 3, 'Notfallkontakt' => 3);
+                    $TypeList = array('Sorgeberechtigt' => 3, 'Vormund' => 3, 'Bevollmächtigt' => 3, 'Notfallkontakt' => 4);
                     foreach($TypeList as $Type => $Count){
                         for($j = 1; $j <= $Count; $j++) {
                             $DataPerson[$Type.$j.'_Salutation'] = '';
@@ -4417,15 +4418,18 @@ class Service extends Extension
      */
     public function getContactDataFromPerson(TblPerson $tblPerson, array $Item): array
     {
+        $Item['PhoneFixed'] = '';
         $Item['Phone'] = '';
         $Item['ExcelPhone'] = '';
         $Item['Mail'] = '';
         $Item['ExcelMail'] = '';
         $Item['ExcelMailPrivate'] = '';
         $Item['ExcelMailBusiness'] = '';
+        $Item['MailFrontendListFixed'] = '';
 
         //Phone
         $tblPhoneList = array();
+        $tblPhoneListFixed = array();
         $tblToPersonPhoneList = Phone::useService()->getPhoneAllByPerson($tblPerson);
         if ($tblToPersonPhoneList) {
             $key = 'Sort_1_' . $tblPerson->getId();
@@ -4444,11 +4448,15 @@ class Service extends Extension
             if (isset($tblPhoneList[$key])) {
                 $tblPhoneList[$key] = $tblPhoneList[$key] . ')';
             }
+            if (isset($tblPhoneListFixed[$key])) {
+                $tblPhoneList[$key] = $tblPhoneList[$key] . ')';
+            }
         }
 
         //Mail
         $tblMailList = array();
         $tblMailFrontendList = array();
+        $tblMailFrontendListFixed = array();
         $mailBusinessList = array();
         $mailPrivateList = array();
         $tblToPersonMailList = Mail::useService()->getMailAllByPerson($tblPerson);
@@ -4462,10 +4470,16 @@ class Service extends Extension
                         $tblMailList[$key] = $tblMailList[$key] . $preString . $tblMail->getAddress();
                         $tblMailFrontendList[$key] = $tblMailFrontendList[$key] . $preString .
                             new Mailto($tblMail->getAddress(), $tblMail->getAddress());
+                        $preString = ',&nbsp;';
+                        $tblMailFrontendListFixed[$key] = $tblMailFrontendListFixed[$key] . $preString .
+                            new Mailto($tblMail->getAddress(), $tblMail->getAddress());
                     } else {
                         $preString = $tblPerson->getFirstName() . ' ' . $tblPerson->getLastName() . ' (';
                         $tblMailList[$key] = $preString . $tblMail->getAddress();
                         $tblMailFrontendList[$key] = $preString .
+                            new Mailto($tblMail->getAddress(), $tblMail->getAddress());
+                        $preString = $tblPerson->getFirstName() . '&nbsp;' . $tblPerson->getLastName() . '</br>';
+                        $tblMailFrontendListFixed[$key] = $preString .
                             new Mailto($tblMail->getAddress(), $tblMail->getAddress());
                     }
 
@@ -4561,7 +4575,6 @@ class Service extends Extension
 
                     $tblPhoneList[$key] = $pre . $tblPersonGuardian->getFirstName() . ' ' .
                         $tblPersonGuardian->getLastName();
-
                     //Phone Guardian
                     $tblToPersonPhoneList = Phone::useService()->getPhoneAllByPerson($tblPersonGuardian);
                     if ($tblToPersonPhoneList) {
@@ -4582,6 +4595,9 @@ class Service extends Extension
                         if (isset($tblPhoneList[$key])) {
                             $tblPhoneList[$key] = $tblPhoneList[$key] . ')';
                         }
+                        if (isset($tblPhoneListFixed[$key])) {
+                            $tblPhoneListFixed[$key] = $tblPhoneListFixed[$key] . ')';
+                        }
                     }
 
                     //Mail Guardian
@@ -4596,11 +4612,18 @@ class Service extends Extension
                                     $tblMailList[$key] = $tblMailList[$key] . $preString . $tblMail->getAddress();
                                     $tblMailFrontendList[$key] = $tblMailFrontendList[$key] . $preString .
                                         new Mailto($tblMail->getAddress(), $tblMail->getAddress());
+                                    $preString = '&nbsp;';
+                                    $tblMailFrontendListFixed[$key] = $tblMailFrontendListFixed[$key] . $preString .
+                                        new Mailto($tblMail->getAddress(), $tblMail->getAddress());
                                 } else {
                                     $preString = $pre . $tblPersonGuardian->getFirstName() . ' ' .
                                         $tblPersonGuardian->getLastName() . ' (';
                                     $tblMailList[$key] = $preString . $tblMail->getAddress();
                                     $tblMailFrontendList[$key] = $preString . new Mailto($tblMail->getAddress(),
+                                            $tblMail->getAddress());
+                                    $preString = $pre . $tblPersonGuardian->getFirstName() . '&nbsp;' .
+                                        $tblPersonGuardian->getLastName() . '<br/>';
+                                    $tblMailFrontendListFixed[$key] = $preString . new Mailto($tblMail->getAddress(),
                                             $tblMail->getAddress());
                                 }
 
@@ -4620,24 +4643,33 @@ class Service extends Extension
                 }
             }
         }
-
         // Insert PhoneList
         if (!empty($tblPhoneList)) {
             ksort($tblPhoneList);
             $Item['Phone'] = $Item['Phone'] . implode('<br>', $tblPhoneList);
+            $Item['PhoneFixed'] = str_replace(' ', '&nbsp', $Item['Phone']);
             $Item['ExcelPhone'] = $tblPhoneList;
         }
+        if (!empty($tblPhoneListFixed)) {
+            ksort($tblPhoneListFixed);
+            $Item['PhoneFixed'] = $Item['PhoneFixed'] . implode('<br>', $tblPhoneListFixed);
+        }
+        #var_dump($tblMailFrontendListFixed);
         // Insert MailList
         if (!empty($tblMailList)) {
             ksort($tblMailList);
             $Item['ExcelMail'] = $tblMailList;
             $Item['Mail'] = $Item['Mail'] . implode('<br>', $tblMailFrontendList);
 
+            if (!empty($tblMailList)) {
+                ksort($tblMailList);
+                $Item['ExcelMail'] = $tblMailList;
+                $Item['MailFrontendListFixed'] = $Item['MailFrontendListFixed'] . implode('<br>', $tblMailFrontendListFixed);
+            }
             if (!empty($mailPrivateList)) {
                 ksort($mailPrivateList);
                 $Item['ExcelMailPrivate'] = implode('; ', $mailPrivateList);
             }
-
             if (!empty($mailBusinessList)) {
                 ksort($mailBusinessList);
                 $Item['ExcelMailBusiness'] = implode('; ', $mailBusinessList);
@@ -4645,7 +4677,6 @@ class Service extends Extension
         }
         return $Item;
     }
-
     /**
      * @param $tblPersonList
      * @param TblDivision|null $tblDivision
@@ -4778,6 +4809,166 @@ class Service extends Extension
             $export->setStyle($export->getCell($column, 2), $export->getCell($column++, $row))->setColumnWidth(14)->setCellType(\PHPExcel_Cell_DataType::TYPE_NUMERIC);
             $export->setStyle($export->getCell($column, 2), $export->getCell($column, $row))->setColumnWidth(15)->setCellType(\PHPExcel_Cell_DataType::TYPE_NUMERIC);
 
+            $export->saveFile(new FileParameter($fileLocation->getFileLocation()));
+
+            return $fileLocation;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array $PersonList
+     * @param array $dataList
+     *
+     * @return bool|FilePointer
+     */
+    public function createAbsenceContentExcelMonthly(array $PersonList, array $dataList, array $countList, TblYear $tblYear): ?FilePointer
+    {
+        $totalCountList = array();
+        if (!empty($PersonList)) {
+            $fileLocation = Storage::createFilePointer('xlsx');
+            /** @var PhpExcel $export */
+            $export = Document::getDocument($fileLocation->getFileLocation());
+            $workSheetsName = [
+                '1' => 'Januar',
+                '2' => 'Februar',
+                '3' => 'März',
+                '4' => 'April',
+                '5' => 'Mai',
+                '6' => 'Juni',
+                '7' => 'Juli',
+                '8' => 'August',
+                '9' => 'September',
+                '10' => 'Oktober',
+                '11' => 'November',
+                '12' => 'Dezember'
+            ];
+            $IsFirstTab = true;
+            /** @var DateTime $startDate */
+            list($startDate, $endDate) = Term::useService()->getStartDateAndEndDateOfYear($tblYear);
+            if ($startDate && $endDate) {
+                while ($startDate < $endDate) {
+                    $month = intval($startDate->format('m'));
+                    $startDate->add(new \DateInterval('P1M'));
+                    if ($IsFirstTab === true) {
+                        $export->renameWorksheet($workSheetsName[(string)$month]);
+                        $IsFirstTab = false;
+                    } else {
+                        $export->createWorksheet($workSheetsName[(string)$month]);
+                    }
+                    // Header
+                    $row = $column = 0;
+                    $export->setValue($export->getCell($column, $row), 'Schüler');
+                    $export->setStyle($export->getCell($column, $row), $export->getCell($column++, 2))->mergeCells()->setBorderAll()->setFontBold();
+                    for ($i = 1; $i <= 31; $i++) {
+                        $export->setValue($export->getCell($column, $row), $i);
+                        $export->setStyle($export->getCell($column, $row), $export->getCell($column++, 2))->mergeCells()->setBorderAll()->setFontBold()
+                            ->setAlignmentCenter();
+                    }
+                    for($i = 0; $i <= 4; $i += 4){
+                        $column += $i;
+                        if($i == 0){
+                            $export->setValue($export->getCell($column, 0), 'Fehlzeiten');
+                        } elseif($i == 4) {
+                            $export->setValue($export->getCell($column, 0), 'Ges. Fz');
+                        }
+                        $export->setStyle($export->getCell($column, 0), $export->getCell($column + 3, 0))->mergeCells()->setBorderTop()->setBorderRight()
+                            ->setAlignmentCenter();
+                        $export->setValue($export->getCell($column, 1), 'Tage');
+                        $export->setStyle($export->getCell($column, 1), $export->getCell($column + 1, 1))->mergeCells()->setBorderRight()->setAlignmentCenter();
+                        $export->setValue($export->getCell($column + 2, 1), 'Std');
+                        $export->setStyle($export->getCell($column + 2, 1), $export->getCell($column + 3, 1))->mergeCells()->setBorderRight()
+                            ->setAlignmentCenter();
+                        for($j = 0; $j < 4; $j++){
+                            $export->setStyle($export->getCell($column + $j, 2))->setBorderRight()->setAlignmentCenter();
+                        }
+                    }
+                    $column -= 4;
+                    // Content
+                    $columnStudents = 0;
+                    $rowStudents = 3;
+                    /** @var TblPerson $tblPerson */
+                    foreach ($PersonList as $tblPerson) {
+                        $lastName = $tblPerson->getLastName();
+                        $firstName = $tblPerson->getFirstSecondName();
+                        $export->setValue($export->getCell($columnStudents, $rowStudents), $lastName . ', ' . $firstName);
+                        $export->setStyle($export->getCell($columnStudents, $rowStudents))->setBorderAll();
+
+                        if (isset($dataList[$month][$tblPerson->getId()])) {
+                            foreach ($dataList[$month][$tblPerson->getId()] as $day => $status) {
+                                $export->setValue($export->getCell($day, $rowStudents), $status);
+                            }
+                        }
+                        $export->setValue($export->getCell(32, $rowStudents), $countList[$month][$tblPerson->getId()]['Days']['E'] ?? 0);
+                        $export->setValue($export->getCell(33, $rowStudents), $countList[$month][$tblPerson->getId()]['Days']['U'] ?? 0);
+                        $export->setValue($export->getCell(34, $rowStudents), $countList[$month][$tblPerson->getId()]['Lessons']['E'] ?? 0);
+                        $export->setValue($export->getCell(35, $rowStudents), $countList[$month][$tblPerson->getId()]['Lessons']['U'] ?? 0);
+
+                        if (isset($totalCountList[$tblPerson->getId()]['Days']['E'])) {
+                            $totalCountList[$tblPerson->getId()]['Days']['E'] += $countList[$month][$tblPerson->getId()]['Days']['E'] ?? 0;
+                        } else {
+                            $totalCountList[$tblPerson->getId()]['Days']['E'] = $countList[$month][$tblPerson->getId()]['Days']['E'] ?? 0;
+                        }
+                        $export->setValue($export->getCell(36, $rowStudents), $totalCountList[$tblPerson->getId()]['Days']['E']);
+
+                        if (isset($totalCountList[$tblPerson->getId()]['Days']['U'])) {
+                            $totalCountList[$tblPerson->getId()]['Days']['U'] += $countList[$month][$tblPerson->getId()]['Days']['U'] ?? 0;
+                        } else {
+                            $totalCountList[$tblPerson->getId()]['Days']['U'] = $countList[$month][$tblPerson->getId()]['Days']['U'] ?? 0;
+                        }
+                        $export->setValue($export->getCell(37, $rowStudents), $totalCountList[$tblPerson->getId()]['Days']['U']);
+
+                        if (isset($totalCountList[$tblPerson->getId()]['Lessons']['E'])) {
+                            $totalCountList[$tblPerson->getId()]['Lessons']['E'] += $countList[$month][$tblPerson->getId()]['Lessons']['E'] ?? 0;
+                        } else {
+                            $totalCountList[$tblPerson->getId()]['Lessons']['E'] = $countList[$month][$tblPerson->getId()]['Lessons']['E'] ?? 0;
+                        }
+                        $export->setValue($export->getCell(38, $rowStudents), $totalCountList[$tblPerson->getId()]['Lessons']['E']);
+
+                        if (isset($totalCountList[$tblPerson->getId()]['Lessons']['U'])) {
+                            $totalCountList[$tblPerson->getId()]['Lessons']['U'] += $countList[$month][$tblPerson->getId()]['Lessons']['U'] ?? 0;
+                        } else {
+                            $totalCountList[$tblPerson->getId()]['Lessons']['U'] = $countList[$month][$tblPerson->getId()]['Lessons']['U'] ?? 0;
+                        }
+                        $export->setValue($export->getCell(39, $rowStudents), $totalCountList[$tblPerson->getId()]['Lessons']['U']);
+
+                        for ($columnCount = 1; $columnCount < 40; $columnCount++) {
+                            $columnLetter = \PHPExcel_Cell::stringFromColumnIndex($columnCount);
+                            $export->getActiveSheet()->getStyle($columnLetter . $rowStudents)->getAlignment()
+                                ->setHorizontal(\PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+                            $export->setStyle($export->getCell($columnCount, $rowStudents), $export->getCell($columnCount, $rowStudents))
+                                ->setBorderOutline();
+                        }
+                        $rowStudents++;
+                    }
+                    // Center Data
+                    for ($maxColumn = 1; $maxColumn < 40; $maxColumn++) {
+                        $columnLetter = \PHPExcel_Cell::stringFromColumnIndex($maxColumn);
+                        $export->getActiveSheet()->getStyle($columnLetter . 3)->getAlignment()->setHorizontal(\PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+                        $export->getActiveSheet()->getStyle($columnLetter . $rowStudents)->getAlignment()
+                            ->setHorizontal(\PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+                        $export->setStyle($export->getCell($maxColumn, 0))->setColumnWidth(2.6);
+                        $export->setStyle($export->getCell($maxColumn, $row), $export->getCell($maxColumn, $row));
+                    }
+                    $columnOffset = $column;
+                    for ($day = 1; $day <= 8; $day++) {
+                        $value = ($day % 2 == 1) ? 'E' : 'U';
+                        $cellCoord = $export->getCell($columnOffset++, 2);
+                        $export->setValue($cellCoord, $value);
+                    }
+                    // width of cells
+                    $export->setStyle($export->getCell(0, 0))->setColumnWidth(21);
+                }
+            }
+            $Month = (int)$startDate->format('m');
+            $nowMonth = (int)(new DateTime())->format('m');
+            if($nowMonth < $Month){
+                $nowMonth += 12;
+            }
+            $DiffMonth = $nowMonth - $Month;
+            $export->selectWorksheetByIndex($DiffMonth);
+            $export->setPaperOrientationParameter(new PaperOrientationParameter('LANDSCAPE'));
             $export->saveFile(new FileParameter($fileLocation->getFileLocation()));
 
             return $fileLocation;

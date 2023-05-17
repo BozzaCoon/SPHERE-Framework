@@ -58,11 +58,13 @@ use SPHERE\Common\Window\Navigation\Link;
 use SPHERE\Common\Window\Stage;
 use SPHERE\System\Extension\Extension;
 
+
 /**
  * Class AccidentReport
  *
  * @package SPHERE\Application\Document\Standard\AccidentReport
  */
+
 class AccidentReport extends Extension
 {
 
@@ -156,6 +158,8 @@ class AccidentReport extends Extension
 
         return $Stage;
     }
+
+
 
     /**
      * @param null $Id
@@ -425,10 +429,7 @@ class AccidentReport extends Extension
                             , 7),
                         new LayoutColumn(
                             new Title('Vorlage des Standard-Dokuments "Unfallanzeige"')
-                            .new Thumbnail(
-                                FileSystem::getFileLoader('/Common/Style/Resource/Document/AccidentReport.PNG')
-                                , ''
-                            )
+                            .new Thumbnail(FileSystem::getFileLoader('/Common/Style/Resource/Document/AccidentReportNew.png'), '')
                             , 5),
                     ))
                 ))
