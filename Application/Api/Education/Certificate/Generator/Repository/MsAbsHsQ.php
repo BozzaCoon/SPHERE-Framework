@@ -153,7 +153,7 @@ class MsAbsHsQ extends Certificate
                         ->styleAlignCenter()
                         , '10%')
                     ->addElementColumn((new Element())
-                        ->setContent('{{ Content.P' . $personId . '.Division.Data.Level.Name }}{{ Content.P' . $personId . '.Division.Data.Name }}')
+                        ->setContent('{{ Content.P' . $personId . '.Division.Data.Name }}')
                         ->styleBorderBottom()
                         ->styleAlignCenter()
                     )
@@ -172,8 +172,8 @@ class MsAbsHsQ extends Certificate
             ->addSlice($this->getDescriptionContent($personId, '200px', '15px'))
             ->addSlice($this->getDateLine($personId))
             ->addSlice((new MsAbsRs(
-                $this->getTblDivision() ? $this->getTblDivision() : null,
-                $this->getTblPrepareCertificate() ? $this->getTblPrepareCertificate() : null
+                $this->getTblStudentEducation() ?: null,
+                $this->getTblPrepareCertificate() ?: null
             ))->getExaminationsBoard('10px','11px'))
             ->addSlice($this->getInfo('170px',
                 'Notenerläuterung:',

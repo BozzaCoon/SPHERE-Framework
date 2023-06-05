@@ -63,6 +63,8 @@ use SPHERE\Common\Window\Stage;
 use SPHERE\System\Extension\Extension;
 
 /**
+ * @deprecated
+ *
  * Class Frontend
  *
  * @package SPHERE\Application\Education\ClassRegister\Absence

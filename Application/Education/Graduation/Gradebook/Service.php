@@ -84,104 +84,6 @@ class Service extends ServiceScoreRule
     }
 
     /**
-     * @param IFormInterface|null $Stage
-     * @param                     $GradeType
-     *
-     * @return IFormInterface|string
-     */
-    public function createGradeType(IFormInterface $Stage = null, $GradeType)
-    {
-
-        /**
-         * Skip to Frontend
-         */
-        if (null === $GradeType) {
-            return $Stage;
-        }
-
-        $Error = false;
-        if (isset($GradeType['Name']) && empty($GradeType['Name'])) {
-            $Stage->setError('GradeType[Name]', 'Bitte geben Sie einen Namen an');
-            $Error = true;
-        }
-        if (isset($GradeType['Code']) && empty($GradeType['Code'])) {
-            $Stage->setError('GradeType[Code]', 'Bitte geben Sie eine Abk&uuml;rzung an');
-            $Error = true;
-        }
-        if (!($tblTestType = Evaluation::useService()->getTestTypeById($GradeType['Type']))) {
-            $Stage->setError('GradeType[Type]', 'Bitte wählen Sie eine Kategorie aus');
-            $Error = true;
-        }
-
-        if (!$Error) {
-            (new Data($this->getBinding()))->createGradeType(
-                $GradeType['Name'],
-                $GradeType['Code'],
-                $GradeType['Description'],
-                isset($GradeType['IsHighlighted']) ? true : false,
-                $tblTestType,
-                isset($GradeType['IsPartGrade']) ? true : false
-            );
-
-            return new Success(new \SPHERE\Common\Frontend\Icon\Repository\Success() . ' Der Zensuren-Typ ist erfasst worden')
-                . new Redirect('/Education/Graduation/Gradebook/GradeType', Redirect::TIMEOUT_SUCCESS);
-        }
-
-        return $Stage;
-    }
-
-    /**
-     * @param IFormInterface|null $Stage
-     * @param                     $Id
-     * @param                     $GradeType
-     *
-     * @return IFormInterface|string
-     */
-    public function updateGradeType(IFormInterface $Stage = null, $Id, $GradeType)
-    {
-
-        /**
-         * Skip to Frontend
-         */
-        if (null === $GradeType || null === $Id) {
-            return $Stage;
-        }
-
-        $Error = false;
-        if (isset($GradeType['Name']) && empty($GradeType['Name'])) {
-            $Stage->setError('GradeType[Name]', 'Bitte geben sie einen Namen an');
-            $Error = true;
-        }
-        if (isset($GradeType['Code']) && empty($GradeType['Code'])) {
-            $Stage->setError('GradeType[Code]', 'Bitte geben sie eine Abkürzung an');
-            $Error = true;
-        }
-
-        $tblGradeType = $this->getGradeTypeById($Id);
-        if (!$tblGradeType) {
-            return new Danger(new Ban() . ' Zensuren-Typ nicht gefunden')
-            . new Redirect('/Education/Graduation/Gradebook/GradeType', Redirect::TIMEOUT_ERROR);
-        }
-
-        if (!$Error) {
-            (new Data($this->getBinding()))->updateGradeType(
-                $tblGradeType,
-                $GradeType['Name'],
-                $GradeType['Code'],
-                $GradeType['Description'],
-                isset($GradeType['IsHighlighted']) ? true : false,
-                Evaluation::useService()->getTestTypeById($GradeType['Type']),
-                $tblGradeType->isActive(),
-                isset($GradeType['IsPartGrade']) ? true : false
-            );
-            return new Success(new \SPHERE\Common\Frontend\Icon\Repository\Success() . ' Der Zensuren-Typ ist erfolgreich gespeichert worden')
-            . new Redirect('/Education/Graduation/Gradebook/GradeType', Redirect::TIMEOUT_SUCCESS);
-        }
-
-        return $Stage;
-    }
-
-    /**
      * @param TblPerson|null $tblPerson
      * @param TblDivision|null $tblDivision
      * @param TblPeriod|null $tblPeriod
@@ -1597,9 +1499,9 @@ class Service extends ServiceScoreRule
             return true;
         }
 
-        if (Generator::useService()->isGradeTypeUsed($tblGradeType)) {
-            return true;
-        }
+//        if (Generator::useService()->isGradeTypeUsed($tblGradeType)) {
+//            return true;
+//        }
 
         if (Prepare::useService()->isGradeTypeUsed($tblGradeType)) {
             return true;
@@ -1610,27 +1512,6 @@ class Service extends ServiceScoreRule
         }
 
         return false;
-    }
-
-    /**
-     * @param TblGradeType $tblGradeType
-     * @param bool $IsActive
-     *
-     * @return string
-     */
-    public function setGradeTypeActive(TblGradeType $tblGradeType, $IsActive = true)
-    {
-
-        return (new Data($this->getBinding()))->updateGradeType(
-            $tblGradeType,
-            $tblGradeType->getName(),
-            $tblGradeType->getCode(),
-            $tblGradeType->getDescription(),
-            $tblGradeType->isHighlighted(),
-            $tblGradeType->getServiceTblTestType() ? $tblGradeType->getServiceTblTestType() : null,
-            $IsActive,
-            $tblGradeType->isPartGrade()
-        );
     }
 
     /**
@@ -1662,68 +1543,6 @@ class Service extends ServiceScoreRule
         if (($tblGradeList = $this->getGradeAllByTest($tblTest))) {
             (new Data($this->getBinding()))->updateGradesPeriod($tblPeriod, $tblGradeList);
         }
-    }
-
-    /**
-     * @param IFormInterface $Form
-     * @param array          $ParentAccount
-     * @param TblAccount     $tblAccountStudent
-     *
-     * @return IFormInterface|string
-     */
-    public function setDisableParent(
-        IFormInterface $Form,
-        $ParentAccount,
-        $tblAccountStudent
-    ) {
-
-        /**
-         * Skip to Frontend
-         */
-        if ($ParentAccount === null) {
-            return $Form;
-        }
-
-        if (isset($ParentAccount['IsSubmit'])) {
-            unset($ParentAccount['IsSubmit']);
-        }
-
-        $Error = false;
-
-        if (!$Error) {
-
-            // Remove old Link
-            $tblStudentCustodyList = Consumer::useService()->getStudentCustodyByStudent($tblAccountStudent);
-            if ($tblStudentCustodyList) {
-                array_walk($tblStudentCustodyList, function (TblStudentCustody $tblStudentCustody) use (&$Error) {
-                    if (!Consumer::useService()->removeStudentCustody($tblStudentCustody)) {
-                        $Error = false;
-                    }
-                });
-            }
-
-            if ($ParentAccount) {
-                // Add new Link
-                array_walk($ParentAccount, function ($AccountId) use (&$Error, $tblAccountStudent) {
-                    $tblAccountCustody = Account::useService()->getAccountById($AccountId);
-                    if ($tblAccountCustody) {
-                        Consumer::useService()->createStudentCustody($tblAccountStudent, $tblAccountCustody,
-                            $tblAccountStudent);
-                    } else {
-                        $Error = false;
-                    }
-                });
-            }
-
-            if (!$Error) {
-                return new Success('Einstellungen wurden erfolgreich gespeichert')
-                    .new Redirect($this->getRequest()->getUrl(), Redirect::TIMEOUT_SUCCESS);
-            } else {
-                return new Danger('Einstellungen konnten nicht gespeichert werden')
-                    .new Redirect($this->getRequest()->getUrl(), Redirect::TIMEOUT_ERROR);
-            }
-        }
-        return $Form;
     }
 
     /**
@@ -2091,59 +1910,6 @@ class Service extends ServiceScoreRule
         } else {
             return $tblGradeList;
         }
-    }
-
-    /**
-     * @param $average
-     * @param string $separator
-     *
-     * @return string
-     */
-    public function getAverageInWord($average, $separator = ',')
-    {
-        $array = explode($separator, $average);
-        $result = '';
-
-        if (isset($array[0])) {
-            if (($word1 = $this->getWordByNumber($array[0]))) {
-                $result .= $word1;
-            } else {
-                return '';
-            }
-        }
-        if (isset($array[1])) {
-            if (($word2 = $this->getWordByNumber($array[1]))) {
-                $result .= ' Komma ' . $word2;
-            } else {
-                return '';
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param $number
-     *
-     * @return false|string
-     */
-    private function getWordByNumber($number)
-    {
-        $number = intval($number);
-        switch ($number) {
-            case 0: return 'Null';
-            case 1: return 'Eins';
-            case 2: return 'Zwei';
-            case 3: return 'Drei';
-            case 4: return 'Vier';
-            case 5: return 'Fünf';
-            case 6: return 'Sechs';
-            case 7: return 'Sieben';
-            case 8: return 'Acht';
-            case 9: return 'Neun';
-        }
-
-        return false;
     }
 
     /**

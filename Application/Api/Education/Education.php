@@ -20,9 +20,21 @@ use SPHERE\Application\Api\Education\Division\StudentStatus;
 use SPHERE\Application\Api\Education\Division\SubjectSelect;
 use SPHERE\Application\Api\Education\Division\SubjectTeacher;
 use SPHERE\Application\Api\Education\Division\ValidationFilter;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiDivisionCourse;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiDivisionCourseMember;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiDivisionCourseStudent;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiStudentSubject;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiSubjectTable;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiTeacherLectureship;
+use SPHERE\Application\Api\Education\DivisionCourse\ApiYearChange;
 use SPHERE\Application\Api\Education\Graduation\Evaluation\ApiEvaluation;
-use SPHERE\Application\Api\Education\Graduation\Evaluation\Evaluation;
-use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradebook;
+use SPHERE\Application\Api\Education\Graduation\Grade\ApiGradeBook;
+use SPHERE\Application\Api\Education\Graduation\Grade\ApiScoreRule;
+use SPHERE\Application\Api\Education\Graduation\Grade\ApiScoreType;
+use SPHERE\Application\Api\Education\Graduation\Grade\ApiStudentOverview;
+use SPHERE\Application\Api\Education\Graduation\Grade\ApiTask;
+use SPHERE\Application\Api\Education\Graduation\Grade\ApiTeacherGroup;
+use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradebookOld;
 use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradesAllYears;
 use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradeMaintenance;
 use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiMinimumGradeCount;
@@ -31,6 +43,7 @@ use SPHERE\Application\Api\Education\Prepare\Prepare;
 use SPHERE\Application\Api\Education\School\ApiCourse;
 use SPHERE\Application\Api\Education\Term\YearHoliday;
 use SPHERE\Application\Api\Education\Term\YearPeriod;
+use SPHERE\Application\Education\Graduation\Evaluation\Evaluation;
 use SPHERE\Application\IApplicationInterface;
 
 /**
@@ -55,7 +68,7 @@ class Education implements IApplicationInterface
         ValidationFilter::registerApi();
         ApiGenerate::registerApi();
         StudentStatus::registerApi();
-        ApiGradebook::registerApi();
+        ApiGradebookOld::registerApi();
         ApiEvaluation::registerApi();
         ApiMinimumGradeCount::registerApi();
         SubjectTeacher::registerApi();
@@ -73,6 +86,19 @@ class Education implements IApplicationInterface
         ApiDigital::registerApi();
         ApiInstructionSetting::registerApi();
         ApiInstructionItem::registerApi();
-        Evaluation::registerModule();
+
+        ApiDivisionCourse::registerApi();
+        ApiDivisionCourseMember::registerApi();
+        ApiDivisionCourseStudent::registerApi();
+        ApiTeacherLectureship::registerApi();
+        ApiSubjectTable::registerApi();
+        ApiStudentSubject::registerApi();
+        ApiYearChange::registerApi();
+        ApiTeacherGroup::registerApi();
+        ApiGradeBook::registerApi();
+        ApiStudentOverview::registerApi();
+        ApiTask::registerApi();
+        ApiScoreType::registerApi();
+        ApiScoreRule::registerApi();
     }
 }

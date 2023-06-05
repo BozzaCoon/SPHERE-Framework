@@ -6,9 +6,7 @@ use SPHERE\Application\Api\ApiTrait;
 use SPHERE\Application\Api\Dispatcher;
 use SPHERE\Application\Api\Education\Certificate\Generator\Certificate;
 use SPHERE\Application\Education\Certificate\Generator\Generator;
-use SPHERE\Application\Education\Lesson\Division\Division;
 use SPHERE\Application\IApiInterface;
-use SPHERE\Application\People\Group\Group;
 use SPHERE\Common\Frontend\Ajax\Emitter\ServerEmitter;
 use SPHERE\Common\Frontend\Ajax\Pipeline;
 use SPHERE\Common\Frontend\Ajax\Receiver\BlockReceiver;
@@ -61,6 +59,8 @@ class ApiPrepare extends Extension implements IApiInterface
         $Dispatcher->registerMethod('setInformation');
         $Dispatcher->registerMethod('changeInformation');
 
+        $Dispatcher->registerMethod('loadDiplomaAverage');
+
         return $Dispatcher->callMethod($Method);
     }
 
@@ -97,13 +97,12 @@ class ApiPrepare extends Extension implements IApiInterface
 
     /**
      * @param $PrepareId
-     * @param $GroupId
      * @param $Key
      * @param $CertificateName
      *
      * @return Pipeline
      */
-    public static function pipelineOpenInformationModal($PrepareId, $GroupId, $Key, $CertificateName)
+    public static function pipelineOpenInformationModal($PrepareId, $Key, $CertificateName): Pipeline
     {
         $Pipeline = new Pipeline(false);
         $ModalEmitter = new ServerEmitter(self::receiverModal(), self::getEndpoint());
@@ -112,7 +111,6 @@ class ApiPrepare extends Extension implements IApiInterface
         ));
         $ModalEmitter->setPostPayload(array(
             'PrepareId' => $PrepareId,
-            'GroupId' => $GroupId,
             'Key' => $Key,
             'CertificateName' => $CertificateName
         ));
@@ -122,14 +120,13 @@ class ApiPrepare extends Extension implements IApiInterface
     }
 
     /**
-     * @param int $PrepareId
-     * @param $GroupId
+     * @param $PrepareId
      * @param $Key
      * @param $CertificateName
      *
      * @return Pipeline
      */
-    public static function pipelineSetInformation($PrepareId, $GroupId, $Key, $CertificateName)
+    public static function pipelineSetInformation($PrepareId, $Key, $CertificateName): Pipeline
     {
         $pipeline = new Pipeline(false);
 
@@ -139,7 +136,6 @@ class ApiPrepare extends Extension implements IApiInterface
         ));
         $emitter->setPostPayload(array(
             'PrepareId' => $PrepareId,
-            'GroupId' => $GroupId,
             'Key' => $Key,
             'CertificateName' => $CertificateName
         ));
@@ -178,33 +174,30 @@ class ApiPrepare extends Extension implements IApiInterface
 
     /**
      * @param $PrepareId
-     * @param $GroupId
      * @param $Key
      * @param $CertificateName
      *
      * @return String
      */
-    public function openInformationModal($PrepareId, $GroupId, $Key, $CertificateName)
+    public function openInformationModal($PrepareId, $Key, $CertificateName): string
     {
         $panel = '';
         $FormField = Generator::useService()->getFormField();
         $KeyFullName = 'Content.Input.' . $Key;
         $label = '';
-        $fieldType = isset($FormField[$KeyFullName]) ? $FormField[$KeyFullName] : false;
+        $fieldType = $FormField[$KeyFullName] ?? false;
         $inputField = false;
         if (($tblPrepare = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getPrepareById($PrepareId))
-            && ($tblDivision = $tblPrepare->getServiceTblDivision())
+            && ($tblDivisionCourse = $tblPrepare->getServiceTblDivision())
         ) {
-            $FormLabel = Generator::useService()->getFormLabel(($tblType = $tblDivision->getType()) ? $tblType : null);
-            $label = isset($FormLabel[$KeyFullName]) ? $FormLabel[$KeyFullName] : '';
+            $FormLabel = Generator::useService()->getFormLabel();
+            $label = $FormLabel[$KeyFullName] ?? '';
 
             $panel = new Panel(
                 'Zeugnisvorbereitung',
                 array(
                     0 => $tblPrepare->getName() . ' ' . new Small(new Muted($tblPrepare->getDate())),
-                    1 => $GroupId && ($tblGroup = Group::useService()->getGroupById($GroupId))
-                        ? 'Gruppe ' . $tblGroup->getName()
-                        : 'Klasse ' . $tblDivision->getDisplayName()
+                    1 => $tblDivisionCourse->getTypeName() . ' ' . $tblDivisionCourse->getDisplayName()
                 ),
                 Panel::PANEL_TYPE_INFO
             );
@@ -212,7 +205,7 @@ class ApiPrepare extends Extension implements IApiInterface
             $CertificateClass = '\SPHERE\Application\Api\Education\Certificate\Generator\Repository\\' . $CertificateName;
             if (class_exists($CertificateClass)) {
                 /** @var Certificate $Certificate */
-                $Certificate = new $CertificateClass($tblDivision ? $tblDivision : null);
+                $Certificate = new $CertificateClass();
 
                 if ($fieldType) {
                     $method = 'selectValues' . $Key;
@@ -254,12 +247,7 @@ class ApiPrepare extends Extension implements IApiInterface
                 ),
                 new FormRow(
                     new FormColumn(
-                        (new Primary('Übernehmen', self::getEndpoint()))->ajaxPipelineOnClick(self::pipelineSetInformation(
-                            $PrepareId,
-                            $GroupId,
-                            $Key,
-                            $CertificateName)
-                        )
+                        (new Primary('Übernehmen', self::getEndpoint()))->ajaxPipelineOnClick(self::pipelineSetInformation($PrepareId, $Key, $CertificateName))
                     )
                 )
             ))))->disableSubmitAction())
@@ -268,13 +256,12 @@ class ApiPrepare extends Extension implements IApiInterface
 
     /**
      * @param $PrepareId
-     * @param $GroupId
      * @param $Key
      * @param $CertificateName
      *
      * @return Danger|string
      */
-    public function setInformation($PrepareId, $GroupId, $Key, $CertificateName)
+    public function setInformation($PrepareId, $Key, $CertificateName)
     {
         if (!($tblPrepare = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getPrepareById($PrepareId))) {
             return new Danger('Zeugnisvorbereitung nicht gefunden', new Exclamation());
@@ -285,46 +272,20 @@ class ApiPrepare extends Extension implements IApiInterface
 
         $result = '';
 
-        if ($GroupId && ($tblGroup = Group::useService()->getGroupById($GroupId))) {
-            if (($tblGenerateCertificate = $tblPrepare->getServiceTblGenerateCertificate())
-                && ($tblPrepareList = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getPrepareAllByGenerateCertificate($tblGenerateCertificate))
-            ) {
-                foreach ($tblPrepareList as $tblPrepareItem) {
-                    if (($tblDivisionItem = $tblPrepareItem->getServiceTblDivision())
-                        && (($tblStudentList = Division::useService()->getStudentAllByDivision($tblDivisionItem)))
-                    ) {
-                        foreach ($tblStudentList as $tblPerson) {
-                            if (Group::useService()->existsGroupPerson($tblGroup, $tblPerson)) {
-                                $tblPrepareStudent = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getPrepareStudentBy(
-                                    $tblPrepareItem, $tblPerson
-                                );
-                                $result .= self::pipelineChangeInformation(
-                                    $informationId,
-                                    $tblPerson->getId(),
-                                    $tblPrepareStudent ? $tblPrepareStudent->getId() : 0,
-                                    $Key,
-                                    $CertificateName
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        } elseif (($tblDivision = $tblPrepare->getServiceTblDivision())) {
-            $tblStudentAll = Division::useService()->getStudentAllByDivision($tblDivision, true);
-            if ($tblStudentAll) {
-                foreach ($tblStudentAll as $tblPerson) {
-                    $tblPrepareStudent = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getPrepareStudentBy(
-                        $tblPrepare, $tblPerson
-                    );
-                    $result .= self::pipelineChangeInformation(
-                        $informationId,
-                        $tblPerson->getId(),
-                        $tblPrepareStudent ? $tblPrepareStudent->getId() : 0,
-                        $Key,
-                        $CertificateName
-                    );
-                }
+        if (($tblDivisionCourse = $tblPrepare->getServiceTblDivision())
+            &&($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())
+        ) {
+            foreach ($tblPersonList as $tblPerson) {
+                $tblPrepareStudent = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getPrepareStudentBy(
+                    $tblPrepare, $tblPerson
+                );
+                $result .= self::pipelineChangeInformation(
+                    $informationId,
+                    $tblPerson->getId(),
+                    $tblPrepareStudent ? $tblPrepareStudent->getId() : 0,
+                    $Key,
+                    $CertificateName
+                );
             }
         }
 
@@ -348,7 +309,7 @@ class ApiPrepare extends Extension implements IApiInterface
 
         $FormField = Generator::useService()->getFormField();
         $KeyFullName = 'Content.Input.' . $Key;
-        $fieldType = isset($FormField[$KeyFullName]) ? $FormField[$KeyFullName] : false;
+        $fieldType = $FormField[$KeyFullName] ?? false;
 
         $CertificateClass = '\SPHERE\Application\Api\Education\Certificate\Generator\Repository\\' . $CertificateName;
         if (class_exists($CertificateClass)) {
@@ -373,5 +334,64 @@ class ApiPrepare extends Extension implements IApiInterface
         }
 
         return '';
+    }
+
+    /**
+     * @param $PrepareStudentId
+     * @param $Key
+     * @param $Jn
+     * @param $SchoolTypeShortName
+     *
+     * @return Pipeline
+     */
+    public static function pipelineLoadDiplomaAverage($PrepareStudentId, $Key, $Jn, $SchoolTypeShortName): Pipeline
+    {
+        $Pipeline = new Pipeline(false);
+        $ModalEmitter = new ServerEmitter(self::receiverContent('', 'Diploma_' . $Key . '_' . $PrepareStudentId), self::getEndpoint());
+        $ModalEmitter->setGetPayload(array(
+            self::API_TARGET => 'loadDiplomaAverage',
+        ));
+        $ModalEmitter->setPostPayload(array(
+            'PrepareStudentId' => $PrepareStudentId,
+            'Key' => $Key,
+            'Jn' => $Jn,
+            'SchoolTypeShortName' => $SchoolTypeShortName
+        ));
+        $Pipeline->appendEmitter($ModalEmitter);
+
+        return $Pipeline;
+    }
+
+    /**
+     * @param $PrepareStudentId
+     * @param $Key
+     * @param $Jn
+     * @param $SchoolTypeShortName
+     * @param $Data
+     * @return TextField|string
+     */
+    public function loadDiplomaAverage($PrepareStudentId, $Key, $Jn, $SchoolTypeShortName, $Data)
+    {
+        $calc = '';
+        if (isset($Data[$PrepareStudentId])) {
+            if (is_numeric($Jn)) {
+                $gradeList['JN'] = intval($Jn);
+            }
+            foreach ($Data[$PrepareStudentId] as $identifier => $value) {
+                if ($value) {
+                    $gradeList[$identifier] = intval($value);
+                }
+            }
+            $calc = \SPHERE\Application\Education\Certificate\Prepare\Prepare::useService()->getCalcDiplomaGrade($gradeList, $Key, $SchoolTypeShortName != 'OS');
+        }
+
+        if ($Key == 'Average')
+        {
+            return $calc;
+        } else {
+            return \SPHERE\Application\Education\Certificate\Prepare\Prepare::useFrontend()->getTextFieldCertificateGrade(
+                'Data[' . $PrepareStudentId . ']', $PrepareStudentId, $calc
+            );
+        }
     }
 }

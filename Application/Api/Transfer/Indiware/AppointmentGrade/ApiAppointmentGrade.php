@@ -3,8 +3,7 @@ namespace SPHERE\Application\Api\Transfer\Indiware\AppointmentGrade;
 
 use SPHERE\Application\Api\ApiTrait;
 use SPHERE\Application\Api\Dispatcher;
-use SPHERE\Application\Education\Graduation\Evaluation\Evaluation;
-use SPHERE\Application\Education\Graduation\Evaluation\Service\Entity\TblTestType;
+use SPHERE\Application\Education\Graduation\Grade\Grade;
 use SPHERE\Application\Education\Lesson\Term\Term;
 use SPHERE\Application\Education\School\Type\Service\Entity\TblType;
 use SPHERE\Application\Education\School\Type\Type;
@@ -91,30 +90,23 @@ class ApiAppointmentGrade extends Extension implements IApiInterface
      */
     public function reloadTaskSelect($YearId = null): SelectBox
     {
-
         if($YearId === null){
             return (new SelectBox('TaskId', 'Auswahl Notenauftrag '.new ToolTip(new Info(),
-                    'Aus welchem Notenauftrag sollen die Noten ausgelesen werden?'), array()))->setRequired();
+                'Aus welchem Notenauftrag sollen die Noten ausgelesen werden?'), array()))->setRequired();
         }
         if(($tblYear = Term::useService()->getYearById($YearId))){
-
-            $tblTestTypeAppointed = Evaluation::useService()->getTestTypeByIdentifier(TblTestType::APPOINTED_DATE_TASK);
-            $tblTaskListAppointed = Evaluation::useService()->getTaskAllByTestType($tblTestTypeAppointed);
-            $tblTaskList = array(array());
-            $YearId = null;
-            if ($tblTaskListAppointed) {
-                foreach ($tblTaskListAppointed as $tblTask) {
-                    if ($tblTask->getServiceTblYear() && $tblTask->getServiceTblYear()->getId() == $tblYear->getId()) {
-                        $tblTaskList[$tblTask->getId()] = $tblTask->getDate().' '.$tblTask->getName();
-                    }
+            if (($tblTaskList = Grade::useService()->getAppointedDateTaskListByYear($tblYear))) {
+                foreach ($tblTaskList as $tblTask) {
+                    $tblTaskList[$tblTask->getId()] = $tblTask->getDateString() . ' ' . $tblTask->getName();
                 }
             }
 
             return (new SelectBox('TaskId', 'Auswahl Notenauftrag '.new ToolTip(new Info(),
-                    'Aus welchem Notenauftrag sollen die Noten ausgelesen werden?'), $tblTaskList))->setRequired();
+                'Aus welchem Notenauftrag sollen die Noten ausgelesen werden?'), $tblTaskList))->setRequired();
         }
+
         return (new SelectBox('TaskId', 'Auswahl Notenauftrag '.new ToolTip(new Info(),
-                'Aus welchem Notenauftrag sollen die Noten ausgelesen werden?'), array()))->setRequired();
+            'Aus welchem Notenauftrag sollen die Noten ausgelesen werden?'), array()))->setRequired();
     }
 
     /**
@@ -151,7 +143,7 @@ class ApiAppointmentGrade extends Extension implements IApiInterface
                 4 => 'Stufe 12 - 2.Halbjahr'
             );
         }
-        return (new SelectBox('Period',
+        return (new SelectBox('Data[Period]',
             'Auswahl Schulhalbjahr '.new ToolTip(new Info(),
                 'Indiware benötigt diese Information um den Export zuweisen zu können'),
             $PeriodList

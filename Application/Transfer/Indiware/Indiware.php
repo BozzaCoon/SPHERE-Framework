@@ -9,8 +9,10 @@ use SPHERE\Application\Transfer\Indiware\Export\Export;
 use SPHERE\Application\Transfer\Indiware\Export\Meta\Meta;
 use SPHERE\Application\Transfer\Indiware\Import\Import;
 use SPHERE\Application\Transfer\Indiware\Import\Lectureship as ImportLectureship;
+use SPHERE\Application\Transfer\Indiware\Import\Lectureship\Lectureship as ImportLectureshipIndiware;
 use SPHERE\Application\Transfer\Indiware\Import\Replacement as ImportReplacement;
 use SPHERE\Application\Transfer\Indiware\Import\StudentCourse as ImportStudentCourse;
+use SPHERE\Application\Transfer\Indiware\Import\StudentCourse\StudentCourse;
 use SPHERE\Application\Transfer\Indiware\Import\Timetable as ImportTimetable;
 use SPHERE\Common\Frontend\Layout\Repository\Thumbnail;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
@@ -31,8 +33,10 @@ class Indiware implements IApplicationInterface
     {
 
         Import::registerModule();
-        ImportLectureship::registerModule();
-        ImportStudentCourse::registerModule();
+//        ImportLectureship::registerModule();
+        ImportLectureshipIndiware::registerModule();
+//        ImportStudentCourse::registerModule();
+        StudentCourse::registerModule();
         ImportTimetable::registerModule();
         ImportReplacement::registerModule();
         Export::registerModule();

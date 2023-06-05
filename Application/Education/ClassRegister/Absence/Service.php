@@ -60,6 +60,8 @@ use SPHERE\System\Database\Binding\AbstractService;
 use SPHERE\System\Extension\Repository\Debugger;
 
 /**
+ * @deprecated
+ *
  * Class Service
  *
  * @package SPHERE\Application\Education\ClassRegister\Absence

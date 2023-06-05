@@ -5,6 +5,7 @@ use DateInterval;
 use DateTime;
 use SPHERE\Application\Corporation\Company\Service\Entity\TblCompany;
 use SPHERE\Application\Education\Lesson\Division\Service\Entity\TblDivision;
+use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\Term\Service\Data;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\TblHoliday;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\TblHolidayType;
@@ -15,12 +16,18 @@ use SPHERE\Application\Education\Lesson\Term\Service\Entity\TblYearPeriod;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\ViewYear;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\ViewYearPeriod;
 use SPHERE\Application\Education\Lesson\Term\Service\Setup;
+use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\Platform\System\BasicData\BasicData;
 use SPHERE\Common\Frontend\Form\IFormInterface;
+use SPHERE\Common\Frontend\Icon\Repository\Edit;
 use SPHERE\Common\Frontend\Icon\Repository\Exclamation;
+use SPHERE\Common\Frontend\Layout\Repository\Container;
+use SPHERE\Common\Frontend\Link\Repository\Standard;
 use SPHERE\Common\Frontend\Message\Repository\Danger;
 use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Frontend\Message\Repository\Warning;
+use SPHERE\Common\Frontend\Text\Repository\Bold;
+use SPHERE\Common\Frontend\Text\Repository\Info;
 use SPHERE\Common\Window\Redirect;
 use SPHERE\System\Database\Binding\AbstractService;
 
@@ -71,6 +78,8 @@ class Service extends AbstractService
     }
 
     /**
+     * @deprecated
+     *
      * @param TblYear $tblYear
      * @param TblDivision|null $tblDivision
      * @param bool $IsAll
@@ -92,6 +101,33 @@ class Service extends AbstractService
         }
 
         return (new Data($this->getBinding()))->getPeriodAllByYear($tblYear, $IsLevel12, $IsAll);
+    }
+
+    /**
+     * @param TblYear $tblYear
+     * @param bool $isShortYear
+     * @param bool $isAllYear
+     *
+     * @return false|TblPeriod[]
+     */
+    public function getPeriodListByYear(TblYear $tblYear, bool $isShortYear = false, bool $isAllYear = false)
+    {
+        return (new Data($this->getBinding()))->getPeriodListByYear($tblYear, $isShortYear, $isAllYear);
+    }
+
+    /**
+     * @param TblPerson $tblPerson
+     * @param TblYear $tblYear
+     *
+     * @return false|TblPeriod[]
+     */
+    public function getPeriodListByPersonAndYear(TblPerson $tblPerson, TblYear $tblYear)
+    {
+        if (DivisionCourse::useService()->getIsShortYearByPersonAndYear($tblPerson, $tblYear)) {
+            return $this->getPeriodListByYear($tblYear, true);
+        } else {
+            return $this->getPeriodListByYear($tblYear);
+        }
     }
 
     /**
@@ -428,7 +464,7 @@ class Service extends AbstractService
     }
 
     /**
-     * @param int $Id
+     * @param $Id
      *
      * @return bool|TblYear
      */
@@ -843,6 +879,24 @@ class Service extends AbstractService
     }
 
     /**
+     * @param TblYear $tblYear
+     * @param DateTime $date
+     * @param array $tblCompanyList
+     *
+     * @return bool|TblHoliday
+     */
+    public function getHolidayByDayAndCompanyList(TblYear $tblYear, DateTime $date, array $tblCompanyList)
+    {
+        foreach ($tblCompanyList as $tblCompany) {
+            if (($tblHoliday = (new Data($this->getBinding()))->getHolidayByDay($tblYear, $date, $tblCompany))) {
+                return $tblHoliday;
+            }
+        }
+
+        return (new Data($this->getBinding()))->getHolidayByDay($tblYear, $date, null);
+    }
+
+    /**
      * @return false|TblHoliday[]
      */
     public function getHolidayAll()
@@ -1218,5 +1272,75 @@ class Service extends AbstractService
         }
 
         return true;
+    }
+
+    /**
+     * @param TblYear $tblYear
+     *
+     * @return bool
+     */
+    public function getIsCurrentYear(TblYear $tblYear): bool
+    {
+        if ($tblYearListByNow = $this->getYearByNow()) {
+            foreach ($tblYearListByNow as $tblYearNow) {
+                if ($tblYear->getId() == $tblYearNow->getId()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param $Route
+     * @param $IsAllYears
+     * @param $YearId
+     * @param $tblYear
+     * @param $HasAllYears
+     *
+     * @return array
+     */
+    public function setYearButtonList($Route, $IsAllYears, $YearId, &$tblYear, $HasAllYears): array
+    {
+        $tblYear = false;
+        $tblYearList = Term::useService()->getYearByNow();
+        if ($YearId) {
+            $tblYear = Term::useService()->getYearById($YearId);
+        } elseif (!$IsAllYears && $tblYearList) {
+            $tblYear = end($tblYearList);
+        }
+
+        $buttonList = array();
+        if ($tblYearList) {
+            $tblYearList = $this->getSorter($tblYearList)->sortObjectBy('DisplayName');
+            /** @var TblYear $tblYearItem */
+            foreach ($tblYearList as $tblYearItem) {
+                if ($tblYear && $tblYear->getId() == $tblYearItem->getId()) {
+                    $buttonList[] = (new Standard(new Info(new Bold($tblYearItem->getDisplayName())),
+                        $Route, new Edit(), array('YearId' => $tblYearItem->getId())));
+                } else {
+                    $buttonList[] = (new Standard($tblYearItem->getDisplayName(), $Route,
+                        null, array('YearId' => $tblYearItem->getId())));
+                }
+            }
+        }
+
+        // Fachlehrer sollen nur Zugriff auf Leistungsüberprüfungen aller aktuellen Schuljahre haben
+        // #SSW-1169 Anlegen von Leistungsüberprüfung von noch nicht erreichten Schuljahren verhindern
+        if ($HasAllYears) {
+            if ($IsAllYears) {
+                $buttonList[] = (new Standard(new Info(new Bold('Alle Schuljahre')),
+                    $Route, new Edit(), array('IsAllYears' => true)));
+            } else {
+                $buttonList[] = (new Standard('Alle Schuljahre', $Route, null,
+                    array('IsAllYears' => true)));
+            }
+        }
+
+        // Abstandszeile
+        $buttonList[] = new Container('&nbsp;');
+
+        return $buttonList;
     }
 }

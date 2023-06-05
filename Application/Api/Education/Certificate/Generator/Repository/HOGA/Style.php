@@ -227,7 +227,7 @@ abstract class Style extends Certificate
                 ->addSection((new Section())
                     ->addElementColumn($this->getElement('Klasse:')->stylePaddingTop($paddingTop), '20%')
                     ->addElementColumn($this->getElement(
-                        '{{ Content.P' . $personId . '.Division.Data.Level.Name }}{{ Content.P' . $personId . '.Division.Data.Name }}',
+                        '{{ Content.P' . $personId . '.Division.Data.Name }}',
                         self::TEXT_SIZE_LARGE
                     )->styleTextBold(), '20%')
                     ->addElementColumn($this->getElement('&nbsp;'))
@@ -1127,28 +1127,20 @@ abstract class Style extends Certificate
                                 // Mittelschulzeugnisse
                                 if ($hasSecondLanguageSecondarySchool)  {
                                     // SSW-484
-                                    $tillLevel = $tblStudentSubject->getServiceTblLevelTill();
-                                    $fromLevel = $tblStudentSubject->getServiceTblLevelFrom();
-                                    if (($tblDivision = $this->getTblDivision())
-                                        && ($tblLevel = $tblDivision->getTblLevel())
-                                    ) {
-                                        $levelName = $tblLevel->getName();
-                                    } else {
-                                        $levelName = false;
-                                    }
+                                    $tillLevel = $tblStudentSubject->getLevelTill();
+                                    $fromLevel = $tblStudentSubject->getLevelFrom();
+                                    $level = $this->getLevel();
 
                                     if ($tillLevel && $fromLevel) {
-                                        if (floatval($fromLevel->getName()) <= floatval($levelName)
-                                            && floatval($tillLevel->getName()) >= floatval($levelName)
-                                        ) {
+                                        if ($fromLevel <= $level && $tillLevel >= $level) {
                                             $tblSecondForeignLanguageSecondarySchool = $tblSubjectForeignLanguage;
                                         }
                                     } elseif ($tillLevel) {
-                                        if (floatval($tillLevel->getName()) >= floatval($levelName)) {
+                                        if ($tillLevel >= $level) {
                                             $tblSecondForeignLanguageSecondarySchool = $tblSubjectForeignLanguage;
                                         }
                                     } elseif ($fromLevel) {
-                                        if (floatval($fromLevel->getName()) <= floatval($levelName)) {
+                                        if ($fromLevel <= $level) {
                                             $tblSecondForeignLanguageSecondarySchool = $tblSubjectForeignLanguage;
                                         }
                                     } else {
@@ -1865,11 +1857,7 @@ abstract class Style extends Certificate
         if ($hasDivision) {
             $section
                 ->addElementColumn($this->getElement('Klasse:')->stylePaddingTop($paddingTop), '8%')
-                ->addElementColumn($this->getElement(
-                    '{{ Content.P' . $personId . '.Division.Data.Level.Name }}{{ Content.P' . $personId . '.Division.Data.Name }}'
-                    , self::TEXT_SIZE_LARGE
-                )
-                    ->styleTextBold()
+                ->addElementColumn($this->getElement('{{ Content.P' . $personId . '.Division.Data.Name }}', self::TEXT_SIZE_LARGE)->styleTextBold()
                 , '20%');
         }
 
@@ -2485,15 +2473,22 @@ abstract class Style extends Certificate
      */
     public function getCustomFosTransfer(int $personId, string $marginTop = '5px') : Slice
     {
+        // SSWHD-2163 Klasse 12 bei den FOS Jahreszeugnissen besitzt keinen Versetzungsvermerk
+        if ($this->getLevel() == 12) {
+            $content = '&nbsp;';
+        } else {
+            $content = '{% if(Content.P' . $personId . '.Input.Transfer) %}
+                        {{ Content.P'.$personId.'.Person.Data.Name.Salutation }} {{ Content.P' . $personId . '.Input.Transfer }}.
+                    {% else %}
+                          &nbsp;
+                    {% endif %}';
+        }
+
         return (new Slice())
             ->styleMarginTop($marginTop)
             ->addSection((new Section())
                 ->addElementColumn($this->getElement(
-                    '{% if(Content.P' . $personId . '.Input.Transfer) %}
-                        {{ Content.P'.$personId.'.Person.Data.Name.Salutation }} {{ Content.P' . $personId . '.Input.Transfer }}.
-                    {% else %}
-                          &nbsp;
-                    {% endif %}',
+                    $content,
                     self::TEXT_SIZE_LARGE
                 ))
             );

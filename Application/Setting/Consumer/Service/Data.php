@@ -3,7 +3,7 @@
 namespace SPHERE\Application\Setting\Consumer\Service;
 
 use SPHERE\Application\Contact\Address\Service\Entity\TblAddress;
-use SPHERE\Application\Education\ClassRegister\Absence\Service\Entity\TblAbsence;
+use SPHERE\Application\Education\Absence\Service\Entity\TblAbsence;
 use SPHERE\Application\People\Meta\Student\Student;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblAccount;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Service\Entity\TblConsumer;
@@ -66,9 +66,9 @@ class Data extends AbstractData
             true);
 
         // Indiware non-public
-        $this->createSetting('Transfer', 'Indiware', 'Import', 'Lectureship_ConvertDivisionLatinToGreek',
-            TblSetting::TYPE_BOOLEAN, '0', 'Indiware', 'Ersetzung der Klassengruppennamen beim Import in ausgeschriebene
-            Griechische Buchstaben. (z.B. a => alpha) [Standard: Nein]');
+        if (($tblSetting = $this->getSetting('Transfer', 'Indiware', 'Import', 'Lectureship_ConvertDivisionLatinToGreek'))) {
+            $this->destroySetting($tblSetting);
+        }
 
         // Document public
         $this->createSetting('Api', 'Document', 'StudentCard_PrimarySchool', 'ShowSchoolName', TblSetting::TYPE_BOOLEAN,

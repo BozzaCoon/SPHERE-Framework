@@ -35,11 +35,10 @@ use SPHERE\Application\Billing\Inventory\Item\Item;
 use SPHERE\Application\Document\Generator\Generator;
 use SPHERE\Application\Document\Storage\FilePointer;
 use SPHERE\Application\Document\Storage\Storage;
-use SPHERE\Application\Education\Lesson\Division\Division;
+use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
+use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblSubject;
 use SPHERE\Application\Education\Lesson\Subject\Subject;
 use SPHERE\Application\Education\Lesson\Term\Term;
-use SPHERE\Application\People\Group\Group;
-use SPHERE\Application\People\Meta\Student\Student;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Account as GatekeeperAccount;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblIdentification;
@@ -111,18 +110,19 @@ class Creator extends Extension
     }
 
     /**
-     * @param null $PersonId
-     * @param null $DivisionId
+     * @param $PersonId
+     * @param $YearId
      * @param string $paperOrientation
      *
      * @return Stage|string
      */
-    public static function createGradebookOverviewPdf($PersonId, $DivisionId, $paperOrientation = Creator::PAPERORIENTATION_LANDSCAPE) {
+    public static function createGradebookOverviewPdf($PersonId, $YearId, string $paperOrientation = Creator::PAPERORIENTATION_LANDSCAPE)
+    {
         if (($tblPerson = Person::useService()->getPersonById($PersonId))
-            && ($tblDivision = Division::useService()->getDivisionById($DivisionId))
+            && ($tblYear = Term::useService()->getYearById($YearId))
         ) {
             $Document = new GradebookOverview\GradebookOverview();
-            $pageList[] = $Document->buildPage($tblPerson, $tblDivision);
+            $pageList[] = $Document->buildPage($tblPerson, $tblYear);
 
             $File = self::buildDummyFile($Document, array(), $pageList, $paperOrientation);
 
@@ -135,66 +135,49 @@ class Creator extends Extension
     }
 
     /**
-     * @param $DivisionId
-     * @param $GroupId
-     * @param $paperOrientation
+     * @param $DivisionCourseId
+     * @param string $paperOrientation
      * @param $Redirect
      *
      * @return Display|Stage|string
      */
-    public static function createMultiGradebookOverviewPdf($DivisionId, $GroupId, $paperOrientation = Creator::PAPERORIENTATION_LANDSCAPE, $Redirect = true)
+    public static function createMultiGradebookOverviewPdf($DivisionCourseId, $paperOrientation = Creator::PAPERORIENTATION_LANDSCAPE, $Redirect = true)
     {
-
         // Warteseite
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/MultiGradebookOverview/Create',
                 array(
-                    'DivisionId' => $DivisionId,
-                    'GroupId' => $GroupId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'paperOrientation' => $paperOrientation,
                     'Redirect' => 0
                 )
             );
         }
 
-        $tblPersonList = false;
-        $text ='';
-        $tblGroup = false;
-        $tblDivisionStudent = false;
-        if ($DivisionId && ($tblDivision = Division::useService()->getDivisionById($DivisionId))) {
-            $text = ' Klasse ' . $tblDivision->getDisplayName();
-            $tblPersonList = Division::useService()->getStudentAllByDivision($tblDivision);
-            $tblDivisionStudent = $tblDivision;
-        } elseif ($GroupId && ($tblGroup = Group::useService()->getGroupById($GroupId))) {
-            $text = ' Stammgruppe ' . $tblGroup->getName();
-            $tblPersonList = Group::useService()->getPersonAllByGroup($tblGroup);
-        }
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))
+            && ($tblYear = $tblDivisionCourse->getServiceTblYear())
+        ) {
+            if (($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())) {
+                $pageList = array();
+                $documentName = '';
+                foreach($tblPersonList as $tblPerson){
+                    $Document = new GradebookOverview\GradebookOverview();
+                    $documentName = $Document->getName();
 
-        if ($tblPersonList) {
-            $pageList = array();
-            $documentName = '';
-            foreach($tblPersonList as $tblPerson){
-                $Document = new GradebookOverview\GradebookOverview();
-                $documentName = $Document->getName();
-                if ($tblGroup) {
-                    $tblDivisionStudent = Student::useService()->getCurrentMainDivisionByPerson($tblPerson);
+                    $pageList[] = $Document->buildPage($tblPerson, $tblYear);
                 }
 
-                if ($tblDivisionStudent) {
-                    $pageList[] = $Document->buildPage($tblPerson, $tblDivisionStudent);
+                if(!empty($pageList)){
+                    $template = new GradebookOverview\GradebookOverview();
+                    $File = self::buildDummyFile($template, array(), $pageList, $paperOrientation);
                 }
-            }
 
-            if(!empty($pageList)){
-                $template = new GradebookOverview\GradebookOverview();
-                $File = self::buildDummyFile($template, array(), $pageList, $paperOrientation);
-            }
+                $FileName = $documentName . $tblDivisionCourse->getDisplayName() . ' ' . date("Y-m-d") . ".pdf";
 
-            $FileName = $documentName . $text . ' ' . date("Y-m-d") . ".pdf";
-
-            if(isset($File)){
-                return self::buildDownloadFile($File, $FileName);
+                if(isset($File)){
+                    return self::buildDownloadFile($File, $FileName);
+                }
             }
         }
 
@@ -287,8 +270,8 @@ class Creator extends Extension
                 }
 
                 if ($DocumentItem) {
-                    $Data = Generator::useService()->setStudentCardContent($Data, $tblPerson, $DocumentItem, $tblType);
                     $DocumentItem->setTblPerson($tblPerson);
+                    $Data = Generator::useService()->setStudentCardContent($Data, $tblPerson, $DocumentItem, $tblType);
                     $pageList[] = $DocumentItem->buildPage();
                     $pageList[] = $DocumentItem->buildRemarkPage($tblType);
                 }
@@ -346,19 +329,19 @@ class Creator extends Extension
     }
 
     /**
-     * @param null|int $DivisionId
-     * @param null|int $List
-     * @param bool $Redirect
+     * @param $DivisionCourseId
+     * @param $List
+     * @param $Redirect
      *
      * @return Display|string
      */
-    public static function createMultiStudentCardPdf($DivisionId, $List, $Redirect)
+    public static function createMultiStudentCardPdf($DivisionCourseId, $List, $Redirect)
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/StudentCard/CreateMulti',
                 array(
-                    'DivisionId' => $DivisionId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'List' => $List,
                     'Redirect' => 0
                 )
@@ -376,12 +359,14 @@ class Creator extends Extension
             Consumer::useService()->createAccountDownloadLock($tblAccount, new DateTime(), 'StudentCard', true, false);
         }
 
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))) {
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))
+            && ($tblYear = $tblDivisionCourse->getServiceTblYear())
+        ) {
             // Fieldpointer auf dem der Merge durchgeführt wird, (download)
             $MergeFile = Storage::createFilePointer('pdf');
             $PdfMerger = new PdfMerge();
 
-            if(($tblPersonList = Division::useService()->getStudentAllByDivision($tblDivision))){
+            if(($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())){
                 $FileList = array();
                 $count = 0;
                 $maxPersonCount = 15;
@@ -426,9 +411,11 @@ class Creator extends Extension
                             }
 
                             if ($DocumentItem) {
-                                $Data = Generator::useService()->setStudentCardContent($Data, $tblPerson, $DocumentItem,
-                                    $tblType);
                                 $DocumentItem->setTblPerson($tblPerson);
+                                $DocumentItem->setTblYear($tblYear);
+
+                                $Data = Generator::useService()->setStudentCardContent($Data, $tblPerson, $DocumentItem, $tblType);
+
                                 $pageList[] = $DocumentItem->buildPage();
                                 $pageList[] = $DocumentItem->buildRemarkPage($tblType);
                             }
@@ -460,7 +447,7 @@ class Creator extends Extension
                 Consumer::useService()->createAccountDownloadLock($tblAccount, new DateTime(), 'StudentCard', false, true);
 
                 if (!empty($FileList)) {
-                    $FileName = 'Schülerkarteien Klasse ' . $tblDivision->getDisplayName()
+                    $FileName = 'Schülerkarteien '  .  $tblDivisionCourse->getTypeName() . ' ' . $tblDivisionCourse->getName()
                         . ($isList ? ' ' . $List . '.Teil' : '')
                         . ' ' . date("Y-m-d") . ".pdf";
 
@@ -473,19 +460,19 @@ class Creator extends Extension
     }
 
     /**
-     * @param null|int $DivisionId
+     * @param null|int $DivisionCourseId
      * @param null|int $List
      * @param bool $Redirect
      *
      * @return Display|string
      */
-    public static function createMultiStudentCardNewPdf($DivisionId, $List, $Redirect)
+    public static function createMultiStudentCardNewPdf($DivisionCourseId, $List, $Redirect)
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/StudentCardNew/CreateMulti',
                 array(
-                    'DivisionId' => $DivisionId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'List' => $List,
                     'Redirect' => 0
                 )
@@ -503,12 +490,14 @@ class Creator extends Extension
             Consumer::useService()->createAccountDownloadLock($tblAccount, new DateTime(), 'StudentCard', true, false);
         }
 
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))) {
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))
+            && ($tblYear = $tblDivisionCourse->getServiceTblYear())
+        ) {
             // Fieldpointer auf dem der Merge durchgeführt wird, (download)
             $MergeFile = Storage::createFilePointer('pdf');
             $PdfMerger = new PdfMerge();
 
-            if(($tblPersonList = Division::useService()->getStudentAllByDivision($tblDivision))){
+            if(($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())){
                 $FileList = array();
                 $count = 0;
                 $maxPersonCount = 15;
@@ -537,6 +526,7 @@ class Creator extends Extension
                     $Data['Person']['Id'] = $tblPerson->getId();
                     $DocumentItem = new StudentCardNew();
                     $DocumentItem->setTblPerson($tblPerson);
+                    $DocumentItem->setTblYear($tblYear);
                     $pageList = array();
                     $pageList[] = $DocumentItem->buildPage();
 
@@ -570,7 +560,7 @@ class Creator extends Extension
                 Consumer::useService()->createAccountDownloadLock($tblAccount, new DateTime(), 'StudentCard', false, true);
 
                 if (!empty($FileList)) {
-                    $FileName = 'Schülerkarteien Klasse ' . $tblDivision->getDisplayName()
+                    $FileName = 'Schülerkarteien ' .  $tblDivisionCourse->getTypeName() . ' ' . $tblDivisionCourse->getName()
                         . ($isList ? ' ' . $List . '.Teil' : '')
                         . ' ' . date("Y-m-d") . ".pdf";
 
@@ -677,31 +667,30 @@ class Creator extends Extension
     }
 
     /**
-     * @param $DivisionSubjectId
+     * @param null $DivisionCourseId
+     * @param null $SubjectId
      * @param bool $Redirect
      *
      * @return Stage|string
-     * @throws \MOC\V\Core\FileSystem\Exception\FileSystemException
      */
-    public static function createGradebookPdf($DivisionSubjectId = null, $Redirect = true)
+    public static function createGradebookPdf($DivisionCourseId = null, $SubjectId = null, $Redirect = true)
     {
-
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/Gradebook/Create',
                 array(
-                    'DivisionSubjectId' => $DivisionSubjectId,
+                    'DivisionCourseId' => $DivisionCourseId,
+                    'SubjectId' => $SubjectId,
                     'Redirect' => 0
                 )
             );
         }
 
-        if (($tblDivisionSubject = Division::useService()->getDivisionSubjectById($DivisionSubjectId))
-            && ($tblDivision = $tblDivisionSubject->getTblDivision())
-            && ($tblSubject = $tblDivisionSubject->getServiceTblSubject())
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))
+            && ($tblSubject = Subject::useService()->getSubjectById($SubjectId))
         ) {
             $template = new Gradebook();
-            $content = $template->createSingleDocument($tblDivisionSubject);
+            $content = $template->createSingleDocument($tblDivisionCourse, $tblSubject);
 
             ini_set('memory_limit', '1G');
 
@@ -714,7 +703,7 @@ class Creator extends Extension
             $Document->setContent($content);
             $Document->saveFile(new FileParameter($File->getFileLocation()));
 
-            $FileName = 'Notenbuch_' . $tblDivision->getDisplayName() . '_' . $tblSubject->getDisplayName() . '_' . date("Y-m-d").".pdf";
+            $FileName = 'Notenbuch ' . $tblDivisionCourse->getName() . ' ' . $tblSubject->getAcronym() . ' ' . date("Y-m-d").".pdf";
 
             return FileSystem::getStream(
                 $File->getRealPath(),
@@ -726,41 +715,37 @@ class Creator extends Extension
     }
 
     /**
-     * @param $DivisionId
+     * @param $DivisionCourseId
      * @param bool $Redirect
      *
      * @return Stage|string
-     * @throws \MOC\V\Core\FileSystem\Exception\FileSystemException
      */
-    public static function createMultiGradebookPdf($DivisionId = null, $Redirect = true)
+    public static function createMultiGradebookPdf($DivisionCourseId = null, $Redirect = true)
     {
 
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/MultiGradebook/Create',
                 array(
-                    'DivisionId' => $DivisionId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'Redirect' => 0
                 )
             );
         }
 
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))) {
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))) {
             $template = new Gradebook();
 
             ini_set('memory_limit', '2G');
 //            $PdfMerger = new PdfMerge();
 //            $FileList = array();
-            $tblLevel = $tblDivision->getTblLevel();
             $allPages = array();
 
-            if (($tblDivisionSubjectAll = Division::useService()->getDivisionSubjectByDivision($tblDivision))
-                && ($tblYear = $tblDivision->getServiceTblYear())
-                && ($tblPeriodList = Term::useService()->getPeriodAllByYear($tblYear, $tblDivision))
-            ) {
-                // todo Sortierung
-                foreach ($tblDivisionSubjectAll as $tblDivisionSubject) {
-                    $pageList = $template->buildPageList($tblDivisionSubject);
+            if (($tblSubjectList = DivisionCourse::useService()->getSubjectListByDivisionCourse($tblDivisionCourse))) {
+                $tblSubjectList = (new Extension())->getSorter($tblSubjectList)->sortObjectBy('Name');
+                /** @var TblSubject $tblSubject */
+                foreach ($tblSubjectList as $tblSubject) {
+                    $pageList = $template->buildPageList($tblDivisionCourse, $tblSubject);
                     $allPages = array_merge($allPages, $pageList);
 //                    // Create Tmp
 //                    $File = Storage::createFilePointer('pdf', 'SPHERE-Temporary-short', false);
@@ -777,7 +762,7 @@ class Creator extends Extension
                 }
             }
             $File = self::buildDummyFile($template, array(), $allPages);
-            $FileName = 'Notenbücher_' . $tblDivision->getDisplayName()  . '_' . date("Y-m-d").".pdf";
+            $FileName = 'Notenbücher ' . $tblDivisionCourse->getName()  . ' ' . date("Y-m-d").".pdf";
             return self::buildDownloadFile($File, $FileName);
 //            $MergeFile = Storage::createFilePointer('pdf');
 //            // mergen aller hinzugefügten PDF-Datein
@@ -943,7 +928,7 @@ class Creator extends Extension
                     $BasketTypeId,
                     $Data['From'],
                     $Data['To'],
-                    isset($Data['Division']) ? $Data['Division'] : '0',
+                    isset($Data['DivisionCourse']) ? $Data['DivisionCourse'] : '0',
                     isset($Data['Group']) ? $Data['Group'] : '0'
                 );
             }
@@ -1204,35 +1189,37 @@ class Creator extends Extension
     }
 
     /**
-     * @param string $DivisionId
+     * @param string $DivisionCourseId
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createMultiEnrollmentDocumentPdf(string $DivisionId, bool $Redirect): string
+    public static function createMultiEnrollmentDocumentPdf(string $DivisionCourseId, bool $Redirect): string
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/EnrollmentDocument/CreateMulti',
                 array(
-                    'DivisionId' => $DivisionId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'Redirect' => 0
                 )
             );
         }
 
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))) {
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))
+            && ($tblYear = $tblDivisionCourse->getServiceTblYear())
+        ) {
             // Filepointer auf dem der Merge durchgeführt wird, (download)
             $MergeFile = Storage::createFilePointer('pdf');
             $PdfMerger = new PdfMerge();
 
-            if(($tblPersonList = Division::useService()->getStudentAllByDivision($tblDivision))){
+            if(($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())){
                 $FileList = array();
                 foreach ($tblPersonList as $tblPerson) {
                     set_time_limit(300);
 
                     $Document = new EnrollmentDocument(\SPHERE\Application\Document\Standard\EnrollmentDocument\EnrollmentDocument::useService()
-                        ->getEnrollmentDocumentData($tblPerson));
+                        ->getEnrollmentDocumentData($tblPerson, $tblYear));
                     $File = self::buildDummyFile($Document, array(), array());
 
                     // hinzufügen für das mergen
@@ -1252,7 +1239,7 @@ class Creator extends Extension
                 }
 
                 if (!empty($FileList)) {
-                    $FileName = 'Schulbescheinigungen Klasse ' . $tblDivision->getDisplayName() . ' ' . date("Y-m-d") . ".pdf";
+                    $FileName = 'Schulbescheinigungen Kurs ' . $tblDivisionCourse->getName() . ' ' . date("Y-m-d") . ".pdf";
 
                     return self::buildDownloadFile($MergeFile, $FileName);
                 }
@@ -1263,32 +1250,25 @@ class Creator extends Extension
     }
 
     /**
-     * @param $DivisionId
-     * @param $GroupId
-     * @param $YearId
+     * @param $DivisionCourseId
      * @param $Redirect
      *
      * @return string
      */
-    public static function createClassRegisterPdf($DivisionId, $GroupId, $YearId, $Redirect): string
+    public static function createClassRegisterPdf($DivisionCourseId, $Redirect): string
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/ClassRegister/Create',
                 array(
-                    'DivisionId' => $DivisionId,
-                    'GroupId' => $GroupId,
-                    'YearId' => $YearId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'Redirect' => 0
                 )
             );
         }
 
-        $tblGroup = false;
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))
-            || ($tblGroup = Group::useService()->getGroupById($GroupId))
-        ) {
-            $Document = new ClassRegister($tblDivision ?: null, $tblGroup ?: null);
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))) {
+            $Document = new ClassRegister($tblDivisionCourse);
             $pageList[] = $Document->getPageList();
 
             $File = self::buildDummyFile($Document, array(), $pageList);
@@ -1298,36 +1278,29 @@ class Creator extends Extension
             return self::buildDownloadFile($File, $FileName);
         }
 
-        return "Kein Klassenbuch vorhanden!";
+        return "Kein Klassentagebuch vorhanden!";
     }
 
     /**
-     * @param $DivisionId
-     * @param $SubjectId
-     * @param $SubjectGroupId
+     * @param $DivisionCourseId
      * @param $Redirect
      *
      * @return string
      */
-    public static function createCourseContentPdf($DivisionId, $SubjectId, $SubjectGroupId, $Redirect): string
+    public static function createCourseContentPdf($DivisionCourseId, $Redirect): string
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/CourseContent/Create',
                 array(
-                    'DivisionId' => $DivisionId,
-                    'SubjectId' => $SubjectId,
-                    'SubjectGroupId' => $SubjectGroupId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'Redirect' => 0
                 )
             );
         }
 
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))
-            && ($tblSubject = Subject::useService()->getSubjectById($SubjectId))
-            && ($tblSubjectGroup = Division::useService()->getSubjectGroupById($SubjectGroupId))
-        ) {
-            $Document = new CourseContent($tblDivision, $tblSubject, $tblSubjectGroup);
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))) {
+            $Document = new CourseContent($tblDivisionCourse);
             $pageList[] = $Document->getPageList();
 
             $File = self::buildDummyFile($Document, array(), $pageList);
@@ -1341,29 +1314,29 @@ class Creator extends Extension
     }
 
     /**
-     * @param string $DivisionId
+     * @param string $DivisionCourseId
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createMultiDataComparisonPdf(string $DivisionId, bool $Redirect = true): string
+    public static function createMultiDataComparisonPdf(string $DivisionCourseId, bool $Redirect = true): string
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Custom/Gersdorf/MetaDataComparison/Division/CreateMulti',
                 array(
-                    'DivisionId' => $DivisionId,
+                    'DivisionCourseId' => $DivisionCourseId,
                     'Redirect' => 0
                 )
             );
         }
 
-        if (($tblDivision = Division::useService()->getDivisionById($DivisionId))) {
+        if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))) {
             // Filepointer auf dem der Merge durchgeführt wird, (download)
             $MergeFile = Storage::createFilePointer('pdf');
             $PdfMerger = new PdfMerge();
 
-            if(($tblPersonList = Division::useService()->getStudentAllByDivision($tblDivision))){
+            if(($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())){
                 $FileList = array();
                 foreach ($tblPersonList as $tblPerson) {
                     set_time_limit(300);
@@ -1388,7 +1361,7 @@ class Creator extends Extension
                 }
 
                 if (!empty($FileList)) {
-                    $FileName = 'Stammdaten der Klasse ' . $tblDivision->getDisplayName() . ' ' . date("Y-m-d") . ".pdf";
+                    $FileName = 'Stammdaten der Klasse ' . $tblDivisionCourse->getDisplayName() . ' ' . date("Y-m-d") . ".pdf";
                     return self::buildDownloadFile($MergeFile, $FileName);
                 }
             }

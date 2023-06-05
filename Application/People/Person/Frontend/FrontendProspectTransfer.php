@@ -219,13 +219,9 @@ class FrontendProspectTransfer extends FrontendReadOnly
      */
     private function getEditProspectTransferForm(TblPerson $tblPerson = null)
     {
-
-        FrontendStudentBasic::setYearAndDivisionForMassReplace($tblPerson, $Year, $Division);
-
         $tblCompanyAllSchool = Group::useService()->getCompanyAllByGroup(
             Group::useService()->getGroupByMetaTable('SCHOOL')
         );
-        $tblCompanyAllOwn = array();
 
         $tblCompanyAllSchoolNursery = Group::useService()->getCompanyAllByGroup(
             Group::useService()->getGroupByMetaTable('NURSERY')

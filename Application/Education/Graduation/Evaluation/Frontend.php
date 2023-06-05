@@ -3,7 +3,7 @@ namespace SPHERE\Application\Education\Graduation\Evaluation;
 
 use DateTime;
 use SPHERE\Application\Api\Education\Graduation\Evaluation\ApiEvaluation;
-use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradebook;
+use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradebookOld;
 use SPHERE\Application\Api\Education\Graduation\Gradebook\ApiGradesAllYears;
 use SPHERE\Application\Api\People\Meta\Support\ApiSupportReadOnly;
 use SPHERE\Application\Education\Graduation\Evaluation\Service\Entity\TblTask;
@@ -2459,8 +2459,8 @@ class Frontend extends Extension implements IFrontendInterface
                                     if ($gradeListFromAnotherDivision && isset($gradeListFromAnotherDivision[$periodId][$tblPerson->getId()])) {
                                         $data[$column] = implode(', ', $gradeListFromAnotherDivision[$periodId][$tblPerson->getId()])
                                             . '&nbsp;'
-                                            . ApiGradebook::receiverModal()
-                                            . (new Standard('', '#', new EyeOpen()))->ajaxPipelineOnClick(ApiGradebook::pipelineOpenExtraGradesModal(
+                                            . ApiGradebookOld::receiverModal()
+                                            . (new Standard('', '#', new EyeOpen()))->ajaxPipelineOnClick(ApiGradebookOld::pipelineOpenExtraGradesModal(
                                                 $tblDivision->getId(), $tblSubject->getId(), $periodId, $tblPerson->getId()
                                             ));
                                     }
@@ -4320,6 +4320,8 @@ class Frontend extends Extension implements IFrontendInterface
     }
 
     /**
+     * @deprecated use Term::useService()->setYearButtonList()
+     *
      * @param $Route
      * @param $IsAllYears
      * @param $YearId

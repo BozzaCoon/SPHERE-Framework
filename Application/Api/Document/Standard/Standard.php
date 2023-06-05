@@ -126,51 +126,50 @@ class Standard extends Extension implements IModuleInterface
     }
 
     /**
-     * @param null|int $DivisionId
-     * @param null|int $List
-     * @param bool $Redirect
+     * @param $DivisionCourseId
+     * @param $List
+     * @param $Redirect
      *
      * @return Stage|string
      */
-    public static function createStudentCardMultiPdf($DivisionId = null, $List = null, $Redirect = true)
+    public static function createStudentCardMultiPdf($DivisionCourseId = null, $List = null, $Redirect = true)
     {
-        return Creator::createMultiStudentCardPdf($DivisionId, $List, $Redirect);
+        return Creator::createMultiStudentCardPdf($DivisionCourseId, $List, $Redirect);
     }
 
     /**
-     * @param null|int $DivisionId
-     * @param null|int $List
-     * @param bool $Redirect
+     * @param $DivisionCourseId
+     * @param $List
+     * @param $Redirect
      *
      * @return Stage|string
      */
-    public static function createStudentCardMultiNewPdf($DivisionId = null, $List = null, $Redirect = true)
+    public static function createStudentCardMultiNewPdf($DivisionCourseId = null, $List = null, $Redirect = true)
     {
-        return Creator::createMultiStudentCardNewPdf($DivisionId, $List, $Redirect);
+        return Creator::createMultiStudentCardNewPdf($DivisionCourseId, $List, $Redirect);
     }
 
     /**
      * @param null $PersonId
-     * @param null $DivisionId
+     * @param null $YearId
      *
      * @return Stage|string
      */
-    public static function createGradebookOverviewPdf($PersonId = null, $DivisionId = null)
+    public static function createGradebookOverviewPdf($PersonId = null, $YearId = null)
     {
-
-        return Creator::createGradebookOverviewPdf($PersonId, $DivisionId,Creator::PAPERORIENTATION_LANDSCAPE);
+        return Creator::createGradebookOverviewPdf($PersonId, $YearId);
     }
 
     /**
-     * @param null $DivisionId
+     * @param null $DivisionCourseId
+     * @param string $paperOrientation
      * @param bool $Redirect
      *
      * @return Stage|string
      */
-    public static function createMultiGradebookOverviewPdf($DivisionId = null, $GroupId = null, $Redirect = true)
+    public static function createMultiGradebookOverviewPdf($DivisionCourseId = null, $paperOrientation = Creator::PAPERORIENTATION_LANDSCAPE, $Redirect = true)
     {
-
-        return Creator::createMultiGradebookOverviewPdf($DivisionId, $GroupId, Creator::PAPERORIENTATION_LANDSCAPE, $Redirect);
+        return Creator::createMultiGradebookOverviewPdf($DivisionCourseId, $paperOrientation, $Redirect);
     }
 
     /**
@@ -269,40 +268,36 @@ class Standard extends Extension implements IModuleInterface
     }
 
     /**
-     * @param string $DivisionId
+     * @param string $DivisionCourseId
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createEnrollmentDocumentMultiPdf(string $DivisionId, bool $Redirect = true): string
+    public static function createEnrollmentDocumentMultiPdf(string $DivisionCourseId, bool $Redirect = true): string
     {
-        return Creator::createMultiEnrollmentDocumentPdf($DivisionId, $Redirect);
+        return Creator::createMultiEnrollmentDocumentPdf($DivisionCourseId, $Redirect);
     }
 
     /**
-     * @param null $DivisionId
-     * @param null $GroupId
-     * @param null $YearId
+     * @param null $DivisionCourseId
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createClassRegisterPdf($DivisionId = null, $GroupId = null, $YearId = null, bool $Redirect = true): string
+    public static function createClassRegisterPdf($DivisionCourseId = null, bool $Redirect = true): string
     {
-        return Creator::createClassRegisterPdf($DivisionId, $GroupId, $YearId, $Redirect);
+        return Creator::createClassRegisterPdf($DivisionCourseId, $Redirect);
     }
 
     /**
-     * @param null $DivisionId
-     * @param null $SubjectId
-     * @param null $SubjectGroupId
+     * @param null $DivisionCourseId
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createCourseContentPdf($DivisionId = null, $SubjectId = null, $SubjectGroupId = null, bool $Redirect = true): string
+    public static function createCourseContentPdf($DivisionCourseId = null, bool $Redirect = true): string
     {
-        return Creator::createCourseContentPdf($DivisionId, $SubjectId, $SubjectGroupId, $Redirect);
+        return Creator::createCourseContentPdf($DivisionCourseId, $Redirect);
     }
 
     /**

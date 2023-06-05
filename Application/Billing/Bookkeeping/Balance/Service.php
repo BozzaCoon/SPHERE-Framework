@@ -29,7 +29,7 @@ use SPHERE\Application\Contact\Address\Address;
 use SPHERE\Application\Contact\Mail\Mail;
 use SPHERE\Application\Document\Storage\FilePointer;
 use SPHERE\Application\Document\Storage\Storage;
-use SPHERE\Application\Education\Lesson\Division\Division;
+use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\People\Group\Group;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
@@ -129,7 +129,7 @@ class Service extends AbstractService
      * @param string  $BasketTypeId
      * @param string  $MonthFrom
      * @param string  $MonthTo
-     * @param string  $DivisionId
+     * @param string  $DivisionCourseId
      * @param string  $GroupId
      * @param array   $PriceList
      *
@@ -141,7 +141,7 @@ class Service extends AbstractService
         $BasketTypeId = '',
         $MonthFrom = '1',
         $MonthTo = '12',
-        $DivisionId = '0',
+        $DivisionCourseId = '0',
         $GroupId = '0',
         $PriceList = array()
     ){
@@ -196,8 +196,8 @@ class Service extends AbstractService
         }
 
         // use only division matched Person's
-        if(!empty($PriceList) && $DivisionId !== '0' && ($tblDivision = Division::useService()->getDivisionById($DivisionId))){
-            $tblPersonList = Division::useService()->getPersonAllByDivisionList(array($tblDivision));
+        if(!empty($PriceList) && $DivisionCourseId !== '0' && ($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))){
+            $tblPersonList = $tblDivisionCourse->getStudents();
             foreach($PriceList as &$DebtorList){
                 foreach($DebtorList as $CauserId => &$Content){
                     $tblPersonCauser = Person::useService()->getPersonById($CauserId);
@@ -212,7 +212,7 @@ class Service extends AbstractService
             $PriceList = array_filter($PriceList);
         }
 
-        // use only division matched Person's
+        // use only Group matched Person's
         if(!empty($PriceList) && $GroupId !== '0' && ($tblGroup = Group::useService()->getGroupById($GroupId))){
             foreach($PriceList as &$DebtorList){
                 foreach($DebtorList as $CauserId => &$Content){

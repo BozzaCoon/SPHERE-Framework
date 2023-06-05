@@ -3206,49 +3206,23 @@ class Service extends AbstractService
         return empty($repeatedList) ? false : $repeatedList;
     }
 
-    /**
+    /** @deprecated
      * @param TblYear $tblYearSelected
      *
      * @return array
      */
     public function getLeaveStudents(TblYear $tblYearSelected): array
     {
-        $personList = array();
 
+        $personList = array();
         $split = explode('/', $tblYearSelected->getName());
         $tblYearNextList = Term::useService()->getYearByName(
             ((int) $split[0] + 1) . '/' . ((int) $split[1] + 1)
         );
-
         if (($tblYearList = Term::useService()->getYearsByYear($tblYearSelected))
             && ($tblYearNextList)
         ) {
             foreach ($tblYearList as $tblYear) {
-//                if (($tblDivisionList = Division::useService()->getDivisionAllByYear($tblYear))) {
-//                    foreach ($tblDivisionList as $tblDivision) {
-//                        if (!$tblDivision->getTblLevel()->getIsChecked()
-//                            && ($tblStudentList = $this->getStudentAllByDivision($tblDivision, true))
-//                        ) {
-//                            foreach ($tblStudentList as $tblPerson) {
-//                                $isAddPerson = false;
-//                                foreach ($tblYearNextList as $tblYearNext) {
-//                                    $isAddPerson = $this->getDivisionStudentsByPersonAndYear($tblPerson, $tblYearNext) == false;
-//                                    if ($isAddPerson) {
-//                                        break;
-//                                    }
-//                                }
-//
-//                                if ($isAddPerson) {
-//                                    $personList[$tblPerson->getId()] = array(
-//                                        'tblPerson' => $tblPerson,
-//                                        'tblDivision' => $tblDivision
-//                                    );
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-
                 if (($tblDivisionStudentList = $this->getMainDivisionStudentAllByYear($tblYear))) {
                     foreach ($tblDivisionStudentList as $tblDivisionStudent) {
                         if (($tblDivision = $tblDivisionStudent->getTblDivision())
@@ -3261,7 +3235,6 @@ class Service extends AbstractService
                                     break;
                                 }
                             }
-
                             if ($isAddPerson) {
                                 $personList[$tblPerson->getId()] = array(
                                     'tblPerson' => $tblPerson,
@@ -3355,5 +3328,31 @@ class Service extends AbstractService
         }
 
         return false;
+    }
+
+    /**
+     * @param TblDivision $tblDivision
+     * @param TblSubject $tblSubject
+     * @param TblSubjectGroup $tblSubjectGroup
+     *
+     * @return string
+     */
+    public function getMigrateSekCourseString(TblDivision $tblDivision, TblSubject $tblSubject, TblSubjectGroup $tblSubjectGroup): string
+    {
+        return "DivisionId:{$tblDivision->getId()}_SubjectId:{$tblSubject->getId()}_SubjectGroupId:{$tblSubjectGroup->getId()}";
+    }
+
+    /**
+     * für Migration der Zensuren
+     *
+     * @param TblYear $tblYear
+     * @param $StartId
+     * @param $MaxCount
+     *
+     * @return false|TblDivision[]
+     */
+    public function getDivisionListByStartIdAndMaxCount(TblYear $tblYear, $StartId, $MaxCount)
+    {
+        return (new Data($this->getBinding()))->getDivisionListByStartIdAndMaxCount($tblYear, $StartId, $MaxCount);
     }
 }

@@ -62,7 +62,6 @@ use SPHERE\Common\Frontend\Text\Repository\Muted;
 use SPHERE\Common\Frontend\Text\Repository\Small;
 use SPHERE\Common\Frontend\Text\Repository\Success as SuccessText;
 use SPHERE\Common\Frontend\Text\Repository\Warning as WarningText;
-use SPHERE\System\Extension\Repository\Debugger;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -1730,14 +1729,13 @@ class Service
     /**
      * @param TblPerson $tblPerson
      * @param string    $Group
-     * @param bool      $isCoreGroup
      *
      * @return void
      */
-    private function setPersonGroup(TblPerson $tblPerson, string $Group, $isCoreGroup = false)
+    private function setPersonGroup(TblPerson $tblPerson, string $Group)
     {
 
-        $tblGroup = Group::useService()->insertGroup($Group, '', '', $isCoreGroup);
+        $tblGroup = Group::useService()->insertGroup($Group);
         Group::useService()->addGroupPerson($tblGroup, $tblPerson);
     }
 
