@@ -234,21 +234,6 @@ class Data extends AbstractData
     }
 
     /**
-     * @param TblItem $tblItem
-     *
-     * @return false|TblDebtorSelection
-     */
-    public function getDebtorSelectionFindTestByItem(TblItem $tblItem)
-    {
-
-        return $this->getCachedEntityBy(__METHOD__, $this->getConnection()->getEntityManager(),
-            'TblDebtorSelection',
-            array(
-                TblDebtorSelection::ATTR_SERVICE_TBL_ITEM => $tblItem->getId()
-            ));
-    }
-
-    /**
      * @param TblPerson $tblPerson
      * @param TblItem   $tblItem
      *
@@ -765,5 +750,29 @@ class Data extends AbstractData
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param TblDebtorSelection[] $tblDebtorSelectionList
+     *
+     * @return bool
+     */
+    public function destroyDebtorSelectionBulk(array $tblDebtorSelectionList)
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        foreach($tblDebtorSelectionList as $tblDebtorSelection){
+            if($tblDebtorSelection){
+                $Entity = $Manager->getEntity('TblDebtorSelection')->findOneBy(array('Id' => $tblDebtorSelection->getId()));
+                /** @var Element $Entity */
+                if(null !== $Entity){
+                    Protocol::useService()->createDeleteEntry($this->getConnection()->getDatabase(), $Entity, true);
+                    $Manager->bulkKillEntity($Entity);
+                }
+            }
+        }
+        $Manager->flushCache();
+        Protocol::useService()->flushBulkEntries();
+        return true;
     }
 }

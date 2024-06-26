@@ -23,6 +23,8 @@ use SPHERE\Common\Frontend\Icon\Repository\Check;
 use SPHERE\Common\Frontend\Icon\Repository\ChevronLeft;
 use SPHERE\Common\Frontend\Icon\Repository\Disable;
 use SPHERE\Common\Frontend\Icon\Repository\Edit;
+use SPHERE\Common\Frontend\Icon\Repository\EyeMinus;
+use SPHERE\Common\Frontend\Icon\Repository\EyePlus;
 use SPHERE\Common\Frontend\Icon\Repository\Group as GroupIcon;
 use SPHERE\Common\Frontend\Icon\Repository\Info;
 use SPHERE\Common\Frontend\Icon\Repository\Pencil;
@@ -175,7 +177,7 @@ class Frontend extends Extension implements IFrontendInterface
         ))));
     }
 
-    public function frontendDebtorView($GroupId = null)
+    public function frontendDebtorView($GroupId = null, $Extended = false)
     {
         ini_set('memory_limit', '256M');
 
@@ -185,13 +187,18 @@ class Frontend extends Extension implements IFrontendInterface
         }
         $Stage = new Stage('Beitragszahler ', 'Gruppe: '.$GroupName);
         $Stage->addButton(new Standard('Zurück', __NAMESPACE__, new ChevronLeft()));
+        if($Extended) {
+            $Stage->addButton(new Standard('Einfache Ansicht', __NAMESPACE__.'/View', new EyeMinus(), array('GroupId' => $GroupId, 'Extended' => false)));
+        } else {
+            $Stage->addButton(new Standard('Erweiterte Ansicht', __NAMESPACE__.'/View', new EyePlus(), array('GroupId' => $GroupId, 'Extended' => true)));
+        }
 
         $Stage->setContent(
             new Layout(
                 new LayoutGroup(
                     new LayoutRow(array(
                         new LayoutColumn(
-                            $this->getDebtorTable($GroupId)
+                            $this->getDebtorTable($GroupId, $Extended)
                         )
                     ))
                 )
@@ -200,7 +207,7 @@ class Frontend extends Extension implements IFrontendInterface
         return $Stage;
     }
 
-    public function getDebtorTable($GroupId)
+    public function getDebtorTable($GroupId, $Extended = false)
     {
 
         $TableContent = array();
@@ -215,7 +222,7 @@ class Frontend extends Extension implements IFrontendInterface
                 }
 
                 array_walk($tblPersonList,
-                    function(TblPerson $tblPerson) use (&$TableContent, $tblGroup, $IsDebtorNumberNeed){
+                    function(TblPerson $tblPerson) use (&$TableContent, $tblGroup, $IsDebtorNumberNeed, $Extended){
                         $Item['Name'] = $tblPerson->getLastFirstName();
                         // nullen sind für die Sortierung wichtig, (sonnst werden die Warnungen der Debitorennummern inmitten der anderen Werte angezeigt)
                         $Item['DebtorNumber'] = ($IsDebtorNumberNeed
@@ -230,22 +237,25 @@ class Frontend extends Extension implements IFrontendInterface
                             'PersonId' => $tblPerson->getId(),
                         ), 'Bearbeiten');
                         // get Debtor edit / delete options
-                        if($tblDebtorNumberList = Debtor::useService()->getDebtorNumberByPerson($tblPerson)){
-                            $NumberList = array();
-                            foreach($tblDebtorNumberList as $tblDebtorNumber) {
-                                $NumberList[] = $tblDebtorNumber->getDebtorNumber();
+                        if($Extended) {
+                            if($tblDebtorNumberList = Debtor::useService()->getDebtorNumberByPerson($tblPerson)) {
+                                $NumberList = array();
+                                foreach ($tblDebtorNumberList as $tblDebtorNumber) {
+                                    $NumberList[] = $tblDebtorNumber->getDebtorNumber();
+                                }
+                                $Item['DebtorNumber'] = implode('<br/>', $NumberList);
                             }
-                            $Item['DebtorNumber'] = implode('<br/>', $NumberList);
                         }
                         // fill Address if exist
                         $tblAddress = Address::useService()->getInvoiceAddressByPerson($tblPerson);
                         if($tblAddress){
                             $Item['Address'] = $tblAddress->getGuiLayout();
                         }
-
-                        if(Debtor::useService()->getBankAccountAllByPerson($tblPerson)){
-                            $Item['BankAccount'] = '<div class="alert alert-success" style="margin-bottom: 0; padding: 10px 15px">'
-                                .new Check().' Bankverbindung vorhanden</div>';
+                        if($Extended) {
+                            if(Debtor::useService()->getBankAccountAllByPerson($tblPerson)) {
+                                $Item['BankAccount'] = '<div class="alert alert-success" style="margin-bottom: 0; padding: 10px 15px">'
+                                    .new Check().' Bankverbindung vorhanden</div>';
+                            }
                         }
 
 
@@ -253,14 +263,22 @@ class Frontend extends Extension implements IFrontendInterface
                     });
             }
         }
-
-        return new TableData($TableContent, null, array(
-            'Name'         => 'Person',
-            'DebtorNumber' => 'Debitoren-Nr.',
-            'Address'      => 'Adresse',
-            'BankAccount'  => 'Bankdaten',
-            'Option'       => '',
-        ), array(
+        if($Extended) {
+            $TableHead = array(
+                'Name'         => 'Person',
+                'DebtorNumber' => 'Debitoren-Nr.',
+                'Address'      => 'Adresse',
+                'BankAccount'  => 'Bankdaten',
+                'Option'       => '',
+            );
+        } else {
+            $TableHead = array(
+                'Name'         => 'Person',
+                'Address'      => 'Adresse',
+                'Option'       => '',
+            );
+        }
+        return new TableData($TableContent, null, $TableHead, array(
             'columnDefs' => array(
                 array('type' => Consumer::useService()->getGermanSortBySetting(), 'targets' => 0),
                 array("orderable" => false, "targets" => -1),

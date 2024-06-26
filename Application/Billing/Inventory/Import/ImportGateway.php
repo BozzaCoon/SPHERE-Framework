@@ -18,14 +18,12 @@ use SPHERE\Application\Transfer\Gateway\Converter\AbstractConverter;
 use SPHERE\Application\Transfer\Gateway\Converter\FieldPointer;
 use SPHERE\Application\Transfer\Gateway\Converter\FieldSanitizer;
 use SPHERE\Common\Frontend\Icon\Repository\Disable;
-use SPHERE\Common\Frontend\Icon\Repository\Minus;
 use SPHERE\Common\Frontend\Message\Repository\Danger;
 use SPHERE\Common\Frontend\Message\Repository\Info;
 use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Frontend\Message\Repository\Warning;
 use SPHERE\Common\Frontend\Text\Repository\Center;
 use SPHERE\Common\Frontend\Text\Repository\Danger as DangerText;
-use SPHERE\Common\Frontend\Text\Repository\Info as InfoText;
 use SPHERE\Common\Frontend\Text\Repository\Muted;
 use SPHERE\Common\Frontend\Text\Repository\Small;
 use SPHERE\Common\Frontend\Text\Repository\ToolTip;
@@ -39,9 +37,9 @@ class ImportGateway extends AbstractConverter
 
     private $ResultList = array();
     private $ImportList = array();
+    private $RemoveList = array();
     private $ErrorCount = 0;
     private $IsError = false;
-    private $IsIgnore = false;
     private $ItemName = '';
     private $DebtorNumberArray = array();
 
@@ -62,6 +60,14 @@ class ImportGateway extends AbstractConverter
     }
 
     /**
+     * @return array
+     */
+    public function getRemoveList()
+    {
+        return $this->RemoveList;
+    }
+
+    /**
      * @return int
      */
     public function getErrorCount()
@@ -75,12 +81,6 @@ class ImportGateway extends AbstractConverter
 
         $this->ErrorCount++;
         $this->IsError = true;
-    }
-
-    private function addIgnore()
-    {
-
-        $this->IsIgnore = true;
     }
 
     /**
@@ -165,7 +165,9 @@ class ImportGateway extends AbstractConverter
         foreach ($Row as $Part) {
             $Result = array_merge($Result, $Part);
         }
-
+        if(strtolower($Result['Item']) !== strtolower($this->ItemName)){
+            return;
+        }
 
         // Default Error Value
         $this->IsError = false;
@@ -200,6 +202,19 @@ class ImportGateway extends AbstractConverter
             $tblPerson = $this->getPerson($Result['FirstName'], $Result['LastName'], $Result['Birthday'], $tblPersonDebtor);
             if(!$tblPerson){
                 $tblPerson = null;
+            }
+        }
+
+        if($tblPersonDebtor && $tblPerson){
+            if(($tblDebtorSelectionList = Debtor::useService()->getDebtorSelectionByPersonDebtor($tblPersonDebtor))){
+                foreach($tblDebtorSelectionList as $tblDebtorSelectionTemp){
+                    if(($tblItemTemp = $tblDebtorSelectionTemp->getServiceTblItem())
+                        && $tblItemTemp->getName() == $Result['Item']
+                        && ($tblPersonCauser = $tblDebtorSelectionTemp->getServiceTblPersonCauser())
+                        && $tblPersonCauser->getId() == $tblPerson->getId()){
+                        $this->RemoveList[$tblDebtorSelectionTemp->getId()] = $tblDebtorSelectionTemp->getId();
+                    }
+                }
             }
         }
 
@@ -310,19 +325,12 @@ class ImportGateway extends AbstractConverter
         $Result['ValueFrontend'] = $ValueFrontend;
         if($this->IsError){
             $Result['IsError'] = '<span hidden>1</span>'.new Center(new DangerText(new Disable()));
-        } elseif($this->IsIgnore) {
-            $Result['IsError'] = '<span hidden>0</span>'.new Center(new ToolTip(new InfoText(new Minus()), 'Zeile wird nicht importiert'));
         }
 
         // Import wird nur für die richtigen Beitragsarten vorgenommen
-        if($Result['Item'] == $this->ItemName){
-            $this->ImportList[] = $ImportRow;
-        }
+
+        $this->ImportList[] = $ImportRow;
         $this->ResultList[] = $Result;
-
-        $this->IsIgnore = false;
-
-
     }
 
     /**
@@ -453,7 +461,8 @@ class ImportGateway extends AbstractConverter
         }
         if($bic === '&nbsp;'){
             // Hinweis
-            return new ToolTip(new Warning($bic, null, false, 2, 0), 'Es wird empfohlen, eine BIC anzugeben');
+            return new ToolTip(new Warning($bic, null, false, 2, 0), 'Es wird empfohlen, eine BIC anzugeben, diese muss für den SEPA Transfer aber korrekt sein,
+            da sonnst kein verarbeiten in weiterführenden Anwendungen möglich ist.');
         }
         // BIC Warnung anzeigen
         return new ToolTip(new Warning($bic, null, false, 2, 0), 'Anzahl der Zeichen stimmen nicht');
@@ -500,7 +509,6 @@ class ImportGateway extends AbstractConverter
             $Message = new Success($Value, null, false, 2, 0);
         } else {
             $Message = new ToolTip(new Info($Value, null, false, 2, 0), 'Beitragsart wird nicht importiert');
-            $this->addIgnore();
         }
 
         return $Message;

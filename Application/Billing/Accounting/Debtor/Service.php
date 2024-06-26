@@ -302,17 +302,6 @@ class Service extends AbstractService
     }
 
     /**
-     * @param TblItem $tblItem
-     *
-     * @return false|TblDebtorSelection
-     */
-    public function getDebtorSelectionFindTestByItem(TblItem $tblItem)
-    {
-
-        return (new Data($this->getBinding()))->getDebtorSelectionFindTestByItem($tblItem);
-    }
-
-    /**
      * @param TblPerson $tblPersonCauser
      * @param TblItem   $tblItem
      *
@@ -604,5 +593,41 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->removeDebtorSelection($tblDebtorSelection);
+    }
+
+    /**
+     * @param array $tblDebtorSelectionIdList
+     *
+     * @return bool
+     */
+    public function destroyDebtorSelectionBulkByIdArray(array $tblDebtorSelectionIdList)
+    {
+
+        if(!empty($tblDebtorSelectionIdList)){
+            $tblDebtorSelectionList = array();;
+            foreach($tblDebtorSelectionIdList as $tblDebtorSelectionId){
+                if(($tblDebtorSelection = Debtor::useService()->getDebtorSelectionById($tblDebtorSelectionId))){
+                    $tblDebtorSelectionList[] = $tblDebtorSelection;
+                }
+            }
+            if(!empty($tblDebtorSelectionList)){
+                return (new Data($this->getBinding()))->destroyDebtorSelectionBulk($tblDebtorSelectionList);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @param TblItem $tblItem
+     *
+     * @return bool
+     */
+    public function destroyDebtorSelectionBulkByItem(TblItem $tblItem)
+    {
+
+        if(($tblDebtorSelectionList = $this->getDebtorSelectionByItem($tblItem))){
+            return (new Data($this->getBinding()))->destroyDebtorSelectionBulk($tblDebtorSelectionList);
+        }
+        return true;
     }
 }
