@@ -298,8 +298,7 @@ abstract class AbstractDocument
                     && ($tblPrepareStudentList = Prepare::useService()->getPrepareStudentAllByPerson($tblPerson, $tblCertificate ))
                 ) {
                     foreach ($tblPrepareStudentList as $tblPrepareStudent) {
-                        if ($tblPrepareStudent->isPrinted()
-                            && ($tblPrepare = $tblPrepareStudent->getTblPrepareCertificate())
+                        if (($tblPrepare = $tblPrepareStudent->getTblPrepareCertificate())
                             && ($tblPrepareInformation = Prepare::useService()->getPrepareInformationBy($tblPrepare, $tblPerson, 'SchoolType'))
                         ) {
                             if (strpos($tblPrepareInformation->getValue(), 'Oberschule') !== false) {
@@ -888,7 +887,7 @@ abstract class AbstractDocument
 
                 // 2 passen nur 2 Notfallnummern auf die neue Schülerkartei
                 $phoneNew = $phoneNumberList[0]
-                    . ($phoneNumberList[1] ? '; ' . $phoneNumberList[1] : '');
+                    . (isset($phoneNumberList[1]) ? '; ' . $phoneNumberList[1] : '');
             }
 
             $Data['Person']['Contact']['Phone']['EmergencyNumber'] = $phone;
@@ -1035,7 +1034,7 @@ abstract class AbstractDocument
         ->addSection((new Section())
             ->addElementColumn((new Element())
                 ->setContent('&nbsp;')
-                ->styleHeight('7px')
+                ->styleHeight('5px')
             )
         )
         ->addSection((new Section())
@@ -1045,11 +1044,10 @@ abstract class AbstractDocument
                 , '1.2%')
             ->addElementColumn((new Element())
                 ->setContent($content)
-                ->styleHeight('14px')
+                ->styleHeight('12px')
                 ->styleTextSize('8.5')
                 ->stylePaddingLeft('1.2px')
-                ->stylePaddingTop('-2px')
-                ->stylePaddingBottom('-2px')
+                ->stylePaddingBottom('0px')
                 ->styleBorderAll($thicknessInnerLines)
                 , '1.6%')
             ->addElementColumn((new Element())

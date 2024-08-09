@@ -8,7 +8,9 @@ use MOC\V\Component\Document\Document as PdfDocument;
 use MOC\V\Component\Template\Component\IBridgeInterface;
 use MOC\V\Core\FileSystem\FileSystem;
 use SPHERE\Application\Api\Document\Custom\Gersdorf\Repository\MetaDataComparison;
-use SPHERE\Application\Api\Document\Standard\Repository\AccidentReport\AccidentReport;
+use SPHERE\Application\Api\Document\Standard\Repository\AccidentReport\AccidentReportBE;
+use SPHERE\Application\Api\Document\Standard\Repository\AccidentReport\AccidentReportSN;
+use SPHERE\Application\Api\Document\Standard\Repository\AccidentReport\AccidentReportTH;
 use SPHERE\Application\Api\Document\Standard\Repository\Account\AccountApp;
 use SPHERE\Application\Api\Document\Standard\Repository\Account\AccountToken;
 use SPHERE\Application\Api\Document\Standard\Repository\Billing\Billing;
@@ -23,6 +25,8 @@ use SPHERE\Application\Api\Document\Standard\Repository\GradebookOverview;
 use SPHERE\Application\Api\Document\Standard\Repository\MultiPassword\MultiPassword;
 use SPHERE\Application\Api\Document\Standard\Repository\PasswordChange\PasswordChange;
 use SPHERE\Application\Api\Document\Standard\Repository\SignOutCertificate\SignOutCertificate;
+use SPHERE\Application\Api\Document\Standard\Repository\StaffAccidentReport\StaffAccidentReportBE;
+use SPHERE\Application\Api\Document\Standard\Repository\StaffAccidentReport\StaffAccidentReportTH;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\AbstractStudentCard;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\GrammarSchool;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\MultiStudentCard;
@@ -30,12 +34,13 @@ use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\PrimarySchoo
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\SecondarySchool;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentCard\StudentCardNew;
 use SPHERE\Application\Api\Document\Standard\Repository\StudentTransfer;
-use SPHERE\Application\Api\Document\Standard\Repository\StaffAccidentReport\StaffAccidentReport;
+use SPHERE\Application\Api\Document\Standard\Repository\StaffAccidentReport\StaffAccidentReportSN;
 use SPHERE\Application\Billing\Bookkeeping\Balance\Balance;
 use SPHERE\Application\Billing\Bookkeeping\Invoice\Invoice;
 use SPHERE\Application\Billing\Inventory\Document\Service\Entity\TblDocument;
 use SPHERE\Application\Billing\Inventory\Item\Item;
 use SPHERE\Application\Document\Generator\Generator;
+use SPHERE\Application\Document\Generator\Repository\Page;
 use SPHERE\Application\Document\Storage\FilePointer;
 use SPHERE\Application\Document\Storage\Storage;
 use SPHERE\Application\Education\Absence\Absence;
@@ -49,6 +54,8 @@ use SPHERE\Application\Education\School\Type\Type;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Account as GatekeeperAccount;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblIdentification;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Consumer as GatekeeperConsumer;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Service\Entity\TblConsumer;
 use SPHERE\Application\Setting\Consumer\Consumer;
 use SPHERE\Application\Setting\Consumer\Responsibility\Responsibility;
 use SPHERE\Application\Setting\Consumer\Responsibility\Service\Entity\TblResponsibility;
@@ -658,10 +665,23 @@ class Creator extends Extension
                 $Document = new SignOutCertificate($Data);
             }
             if ($DocumentName == 'AccidentReport') {
-                $Document = new AccidentReport($Data);
+                if (GatekeeperConsumer::useService()->getConsumerBySessionIsConsumerType(TblConsumer::TYPE_BERLIN)) {
+                    $Document = new AccidentReportBE($Data);
+                } elseif(GatekeeperConsumer::useService()->getConsumerBySessionIsConsumerType(TblConsumer::TYPE_THUERINGEN)) {
+                    $Document = new AccidentReportTH($Data);
+                } else { // Sachsen
+                    $Document = new AccidentReportSN($Data);
+                }
+
             }
             if ($DocumentName == 'StaffAccidentReport'){
-                $Document = new StaffAccidentReport($Data);
+                if (GatekeeperConsumer::useService()->getConsumerBySessionIsConsumerType(TblConsumer::TYPE_BERLIN)) {
+                    $Document = new StaffAccidentReportBE($Data);
+                } elseif(GatekeeperConsumer::useService()->getConsumerBySessionIsConsumerType(TblConsumer::TYPE_THUERINGEN)) {
+                    $Document = new StaffAccidentReportTH($Data);
+                } else { // Sachsen
+                    $Document = new StaffAccidentReportSN($Data);
+                }
             }
             if ($Document) {
                 $File = self::buildDummyFile($Document, array(), array(), $paperOrientation);
@@ -1209,17 +1229,19 @@ class Creator extends Extension
 
     /**
      * @param string $DivisionCourseId
+     * @param array $Data
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createMultiEnrollmentDocumentPdf(string $DivisionCourseId, bool $Redirect): string
+    public static function createMultiEnrollmentDocumentPdf(string $DivisionCourseId, array $Data, bool $Redirect): string
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/EnrollmentDocument/CreateMulti',
                 array(
                     'DivisionCourseId' => $DivisionCourseId,
+                    'Data' => $Data,
                     'Redirect' => 0
                 )
             );
@@ -1238,7 +1260,7 @@ class Creator extends Extension
                     set_time_limit(300);
 
                     $Document = new EnrollmentDocument(\SPHERE\Application\Document\Standard\EnrollmentDocument\EnrollmentDocument::useService()
-                        ->getEnrollmentDocumentData($tblPerson, $tblYear));
+                        ->getEnrollmentDocumentData($tblPerson, $tblYear, $Data));
                     $File = self::buildDummyFile($Document, array(), array());
 
                     // hinzufügen für das mergen
@@ -1270,17 +1292,19 @@ class Creator extends Extension
 
     /**
      * @param string $DivisionCourseId
+     * @param array $Data
      * @param bool $Redirect
      *
      * @return string
      */
-    public static function createMultiSignOutCertificatePdf(string $DivisionCourseId, bool $Redirect): string
+    public static function createMultiSignOutCertificatePdf(string $DivisionCourseId, array $Data, bool $Redirect): string
     {
         if ($Redirect) {
             return \SPHERE\Application\Api\Education\Certificate\Generator\Creator::displayWaitingPage(
                 '/Api/Document/Standard/SignOutCertificate/CreateMulti',
                 array(
                     'DivisionCourseId' => $DivisionCourseId,
+                    'Data' => $Data,
                     'Redirect' => 0
                 )
             );
@@ -1299,7 +1323,7 @@ class Creator extends Extension
                     set_time_limit(300);
 
                     $Document = new SignOutCertificate(\SPHERE\Application\Document\Standard\SignOutCertificate\SignOutCertificate::useService()
-                        ->getSignOutCertificateData($tblPerson, $tblYear));
+                        ->getSignOutCertificateData($tblPerson, $tblYear, $Data));
                     $File = self::buildDummyFile($Document, array(), array());
 
                     // hinzufügen für das mergen
@@ -1586,37 +1610,77 @@ class Creator extends Extension
         }
 
         if (($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))) {
-            list ($dataList, $headerList) = Grade::useService()->getStudentOverviewCourseData($tblDivisionCourse, array(), true);
-            unset($headerList['Picture']);
-            unset($headerList['Integration']);
-            unset($headerList['Course']);
-            unset($headerList['Option']);
-
-            $headerWidthList = array();
-            $count = count($headerList) - 2;
-            foreach ($headerList as $key => $header) {
-                if ($key == 'Number') {
-                    $headerWidthList[$key] = '5%';
-                } elseif ($key == 'Person') {
-                    $headerWidthList[$key] = '20%';
-                } else {
-                    $headerWidthList[$key] = (75 / $count) . '%';
-                }
-            }
-
             $preTextList[] = 'Schülerübersicht für ' . $tblDivisionCourse->getDisplayName();
             $preTextList[] = 'Stand: ' . (new DateTime())->format('d.m.Y');
-
             $Document = new DocumentBuilder('Schülerübersicht für ' . $tblDivisionCourse->getDisplayName() . ' ' . (new DateTime())->format('d-m-Y'));
-            $pageList[] = $Document->getPageList($headerList, $headerWidthList, $dataList, $preTextList);
+            $pageList = array();
+
+            // SekII beide Halbjahre getrennt anzeigen
+            if (DivisionCourse::useService()->getIsCourseSystemByStudentsInDivisionCourse($tblDivisionCourse)) {
+                $isShortYear = false;
+                $tblYear = $tblDivisionCourse->getServiceTblYear();
+                if (($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())) {
+                    foreach ($tblPersonList as $tblPerson) {
+                        if (DivisionCourse::useService()->getIsShortYearByPersonAndYear($tblPerson, $tblYear)) {
+                            $isShortYear = true;
+                            break;
+                        }
+                    }
+                }
+
+                if ($tblYear
+                    && ($tblPeriodList = Term::useService()->getPeriodListByYear($tblYear, $isShortYear))
+                ) {
+                    $count = 0;
+                    foreach ($tblPeriodList as $tblPeriod) {
+                        $count++;
+                        $preTextListForPeriod = $preTextList;
+                        $preTextListForPeriod[] = $count . '. Halbjahr';
+                        list ($bodyList, $headerList) = Grade::useService()->getStudentOverviewCourseData($tblDivisionCourse, array(), true, $tblPeriod);
+                        $pageList[] = self::getStudentOverviewPage($Document, $bodyList, $headerList, $preTextListForPeriod);
+                    }
+                }
+            } else {
+                list ($bodyList, $headerList) = Grade::useService()->getStudentOverviewCourseData($tblDivisionCourse, array(), true);
+                $pageList[] = self::getStudentOverviewPage($Document, $bodyList, $headerList, $preTextList);
+            }
 
             $File = self::buildDummyFile($Document, array(), $pageList, Creator::PAPERORIENTATION_LANDSCAPE);
-
             $FileName = $Document->getName() . '.pdf';
 
             return self::buildDownloadFile($File, $FileName);
         }
 
         return "Keine Schülerübersicht vorhanden!";
+    }
+
+    /**
+     * @param DocumentBuilder $Document
+     * @param array $bodyList
+     * @param array $headerList
+     * @param array $preTextList
+     *
+     * @return Page
+     */
+    private static function getStudentOverviewPage(DocumentBuilder $Document, array $bodyList, array $headerList, array $preTextList): Page
+    {
+        unset($headerList['Picture']);
+        unset($headerList['Integration']);
+        unset($headerList['Course']);
+        unset($headerList['Option']);
+
+        $headerWidthList = array();
+        $count = count($headerList) - 2;
+        foreach ($headerList as $key => $header) {
+            if ($key == 'Number') {
+                $headerWidthList[$key] = '2%';
+            } elseif ($key == 'Person') {
+                $headerWidthList[$key] = '18%';
+            } else {
+                $headerWidthList[$key] = (80 / $count) . '%';
+            }
+        }
+
+        return $Document->getPageList($headerList, $headerWidthList, $bodyList, $preTextList);
     }
 }

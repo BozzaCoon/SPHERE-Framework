@@ -5,7 +5,6 @@ use DateTime;
 use SPHERE\Application\Api\Reporting\Standard\ApiMetaDataComparison;
 use SPHERE\Application\Api\Reporting\Standard\ApiStandard;
 use SPHERE\Application\Education\Certificate\Generator\Repository\Element\Ruler;
-use SPHERE\Application\Education\Lesson\Division\Service\Entity\TblDivision;
 use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourseMemberType;
@@ -18,6 +17,7 @@ use SPHERE\Application\People\Group\Group;
 use SPHERE\Application\People\Group\Service\Entity\TblGroup;
 use SPHERE\Application\People\Meta\Agreement\Agreement;
 use SPHERE\Application\People\Meta\Student\Student;
+use SPHERE\Application\Reporting\Standard\Person\Person as ReportingPerson;
 use SPHERE\Application\Setting\Consumer\Consumer;
 use SPHERE\Common\Frontend\Form\Repository\Field\AutoCompleter;
 use SPHERE\Common\Frontend\Form\Repository\Field\CheckBox;
@@ -36,6 +36,7 @@ use SPHERE\Common\Frontend\Icon\Repository\EyeOpen;
 use SPHERE\Common\Frontend\Icon\Repository\Filter;
 use SPHERE\Common\Frontend\Icon\Repository\Info;
 use SPHERE\Common\Frontend\Icon\Repository\Listing;
+use SPHERE\Common\Frontend\Icon\Repository\Time;
 use SPHERE\Common\Frontend\IFrontendInterface;
 use SPHERE\Common\Frontend\Layout\Repository\Container;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
@@ -69,7 +70,6 @@ use SPHERE\System\Extension\Extension;
  */
 class Frontend extends Extension implements IFrontendInterface
 {
-
     /**
      * @param $Route
      * @param $All
@@ -1267,22 +1267,45 @@ class Frontend extends Extension implements IFrontendInterface
     }
 
     /**
-     * @param TblDivisionCourse|TblDivision $tblDivisionCourse
+     * @param TblDivisionCourse $tblDivisionCourse
      *
      * @return bool|Panel
      */ // ToDO weiter verfolgen
-    public function getInActiveStudentPanel(TblDivisionCourse $tblDivisionCourse)
+    public function getInActiveStudentPanel(TblDivisionCourse $tblDivisionCourse, bool $hasAbsenceButton = false, string $BasicRoute = '', string $ReturnRoute = '')
     {
-        if($tblDivisionCourse instanceof TblDivision){
-            $tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($tblDivisionCourse->getId());
-        }
         $inActiveStudentList = array();
         if (($tblDivisionCourseMemberList = DivisionCourse::useService()->getDivisionCourseMemberListBy($tblDivisionCourse, TblDivisionCourseMemberType::TYPE_STUDENT, true, false))) {
             $now = new DateTime('now');
             foreach ($tblDivisionCourseMemberList as $tblDivisionCourseMember) {
-                if ($tblDivisionCourseMember->getLeaveDateTime() !== null && $now > $tblDivisionCourseMember->getLeaveDateTime()) {
-                    $tblPerson = $tblDivisionCourseMember->getServiceTblPerson();
-                    $inActiveStudentList[] = $tblPerson->getLastFirstName().' (Deaktivierung: ' . $tblDivisionCourseMember->getLeaveDateTime()->format('d.m.Y').')';
+                if ($tblDivisionCourseMember->getLeaveDateTime() !== null && $now > $tblDivisionCourseMember->getLeaveDateTime()
+                    && ($tblPerson = $tblDivisionCourseMember->getServiceTblPerson())
+                    && ($tblYear = $tblDivisionCourse->getServiceTblYear())
+                ) {
+                    $text = $tblPerson->getLastFirstName().' (Deaktivierung: ' . $tblDivisionCourseMember->getLeaveDateTime()->format('d.m.Y').')';
+
+                    if ($hasAbsenceButton) {
+                        $currentMainDivisionCourses = DivisionCourse::useService()->getCurrentMainCoursesByPersonAndYear($tblPerson, $tblYear);
+
+                        $inActiveStudentList[] = new Layout(new LayoutGroup(new LayoutRow(array(
+                            new LayoutColumn($text, 6),
+                            new LayoutColumn(
+                                $currentMainDivisionCourses
+                                    ?
+                                    : new PullRight((new Standard(
+                                        '', '/Education/ClassRegister/Digital/AbsenceStudent', new Time(),
+                                        array(
+                                            'DivisionCourseId' => $tblDivisionCourse->getId(),
+                                            'PersonId'   => $tblPerson->getId(),
+                                            'BasicRoute' => $BasicRoute,
+                                            'ReturnRoute'=> $ReturnRoute
+                                        ),
+                                        'Fehlzeiten des Schülers verwalten'
+                                    )))
+                                , 6)
+                        ))));
+                    } else {
+                        $inActiveStudentList[] = $text;
+                    }
                 }
             }
         }
@@ -1572,6 +1595,39 @@ class Frontend extends Extension implements IFrontendInterface
                 ))
             )
         );
+
+        return $Stage;
+    }
+
+    /**
+     * @return Stage
+     */
+    public function frontendRepresentative(): Stage
+    {
+
+        $Stage = new Stage('Auswertung', 'Elternsprecher / Klassensprecher');
+        $Stage->setMessage(new Danger('Die dauerhafte Speicherung des Excel-Exports ist datenschutzrechtlich nicht zulässig!', new Exclamation()));
+        $Stage->addButton(
+            new Primary('Herunterladen', '/Api/Reporting/Standard/Person/RepresentativeList/Download', new Download())
+        );
+
+        list($dataList, $headers) = ReportingPerson::useService()->createRepresentativeList(false);
+        $Stage->setContent(new Layout(new LayoutGroup(
+            new LayoutRow(new LayoutColumn(
+                new TableData($dataList, null, $headers,
+                    array(
+                        'columnDefs' => array(
+                            array('type' => 'natural', 'targets' => 0),
+                        ),
+                        'order' => array(
+                            array(0, 'asc'),
+                            array(2, 'asc')
+                        ),
+                        'responsive' => false
+                    )
+                )
+                , 12)), new Title(new Listing().' Übersicht')
+        )));
 
         return $Stage;
     }

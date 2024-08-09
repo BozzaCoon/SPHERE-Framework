@@ -494,6 +494,9 @@ class Service extends \SPHERE\Application\Platform\Gatekeeper\Authorization\Acco
                 $tblAccountConsumerTokenList = $tblAccountConsumerCredentialList;
             }
         }
+        if (!empty($tblAccountConsumerTokenList)) {
+            $tblAccountConsumerTokenList = array_unique($tblAccountConsumerTokenList);
+        }
 
         return empty($tblAccountConsumerTokenList) ? false : $tblAccountConsumerTokenList;
     }

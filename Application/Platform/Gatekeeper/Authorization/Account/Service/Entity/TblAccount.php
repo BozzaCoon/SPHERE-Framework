@@ -47,11 +47,11 @@ class TblAccount extends Element
     /**
      * @Column(type="string")
      */
-    protected $UserAlias;
+    protected ?string $UserAlias;
     /**
      * @Column(type="string")
      */
-    protected $BackupMail;
+    protected ?string $BackupMail;
 
     /**
      * @Column(type="string")
@@ -166,7 +166,7 @@ class TblAccount extends Element
         if($UserAlias){
             $this->UserAlias = strtolower($UserAlias);
         } else {
-            $this->UserAlias = '';
+            $this->UserAlias = null;
         }
 
     }
@@ -191,7 +191,7 @@ class TblAccount extends Element
         if($RecoveryMail){
             $this->BackupMail = strtolower($RecoveryMail);
         } else {
-            $this->BackupMail = '';
+            $this->BackupMail = null;
         }
     }
 
@@ -221,7 +221,7 @@ class TblAccount extends Element
         } elseif ($this->getHasAuthentication(TblIdentification::NAME_AUTHENTICATOR_APP)
             || $this->getHasAuthentication(TblIdentification::NAME_TOKEN)
         ) {
-            $Timeout = ( 60 * 60 );
+            $Timeout = ( 60 * 60 * 2);
         } elseif ($this->getHasAuthentication(TblIdentification::NAME_CREDENTIAL)
             || $this->getHasAuthentication(TblIdentification::NAME_USER_CREDENTIAL)
         ) {

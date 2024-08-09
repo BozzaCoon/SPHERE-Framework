@@ -1,7 +1,6 @@
 <?php
 namespace SPHERE\Application\Document\Generator;
 
-use DateInterval;
 use DateTime;
 use SPHERE\Application\Api\Document\AbstractDocument;
 use SPHERE\Application\Contact\Address\Address;
@@ -15,9 +14,9 @@ use SPHERE\Application\Document\Generator\Service\Kamenz\KamenzReportService;
 use SPHERE\Application\Document\Generator\Service\Setup;
 use SPHERE\Application\Education\Certificate\Prepare\Prepare;
 use SPHERE\Application\Education\Certificate\Prepare\Service\Entity\TblPrepareStudent;
-use SPHERE\Application\Education\Graduation\Evaluation\Evaluation;
 use SPHERE\Application\Education\Graduation\Grade\Grade;
 use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
+use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblStudentEducation;
 use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblSubject;
 use SPHERE\Application\Education\Lesson\Subject\Subject;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\TblYear;
@@ -35,6 +34,7 @@ use SPHERE\Common\Frontend\Form\IFormInterface;
 use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Window\Redirect;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\System\Extension\Repository\Sorter;
 
 /**
  * Class Service
@@ -161,8 +161,8 @@ class Service extends AbstractService
                         || $tblCertificateType->getIdentifier() == 'MID_TERM_COURSE'
                         || $tblCertificateType->getIdentifier() == 'DIPLOMA'
                     )
-                    && $tblPrepareStudent->isApproved()
-                    && $tblPrepareStudent->isPrinted()
+//                    && $tblPrepareStudent->isApproved()
+//                    && $tblPrepareStudent->isPrinted()
                     && ($tblYear = $tblPrepare->getYear())
                     && ($tblStudentEducationPrepare = DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear))
                     && ($level = $tblStudentEducationPrepare->getLevel())
@@ -215,13 +215,11 @@ class Service extends AbstractService
                 $Data['Certificate'][$typeId]['Data' . $count]['YearForRemark'] = $year;
 
                 // Kopfnoten
-                $tblTestTypeBehaviorTask = Evaluation::useService()->getTestTypeByIdentifier('BEHAVIOR_TASK');
                 if (($tblGradeTypeList = Grade::useService()->getGradeTypeList(true))) {
                     foreach ($tblGradeTypeList as $tblGradeType) {
                         if (($tblTaskGrade = Prepare::useService()->getPrepareGradeByGradeType(
                             $tblPrepare,
                             $tblPerson,
-                            $tblTestTypeBehaviorTask,
                             $tblGradeType
                         ))) {
                             $Data['Certificate'][$typeId]['Data' . $count]['BehaviorGrade'][$tblGradeType->getCode()] = $tblTaskGrade->getGrade();
@@ -403,8 +401,8 @@ class Service extends AbstractService
                     && ($tblCertificateType->getIdentifier() == 'HALF_YEAR'
                         || $tblCertificateType->getIdentifier() == 'YEAR'
                     )
-                    && $tblPrepareStudent->isApproved()
-                    && $tblPrepareStudent->isPrinted()
+//                    && $tblPrepareStudent->isApproved()
+//                    && $tblPrepareStudent->isPrinted()
                 ) {
                     $list[(new DateTime($tblPrepare->getDate()))->format('Y.m.d')] = $tblPrepareStudent;
                 }
@@ -497,8 +495,8 @@ class Service extends AbstractService
                         || $tblCertificateType->getIdentifier() == 'YEAR'
                         || $tblCertificateType->getIdentifier() == 'MID_TERM_COURSE'
                     )
-                    && $tblPrepareStudent->isApproved()
-                    && $tblPrepareStudent->isPrinted()
+//                    && $tblPrepareStudent->isApproved()
+//                    && $tblPrepareStudent->isPrinted()
                     && ($tblYear = $tblPrepare->getYear())
                     && ($tblStudentEducationPrepare = DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear))
                     && ($tblSchoolType = $tblStudentEducationPrepare->getServiceTblSchoolType())
@@ -627,15 +625,16 @@ class Service extends AbstractService
     /**
      * @param TblPerson $tblPerson
      * @param ?TblYear $tblYear
+     * @param array $Data
      *
      * @return array
      */
-    public function getEnrollmentDocumentData(TblPerson $tblPerson, ?TblYear $tblYear = null): array
+    public function getEnrollmentDocumentData(TblPerson $tblPerson, ?TblYear $tblYear = null, array $Data = array()): array
     {
 
 //        $Data['PersonId'] = $tblPerson->getId();
         $Data['FirstLastName'] = $tblPerson->getFirstSecondName().' '.$tblPerson->getLastName();
-        $Data['Date'] = (new DateTime())->format('d.m.Y');
+        $Data['Date'] = isset($Data['Date']) ? $Data['Date'] : (new DateTime())->format('d.m.Y');
         $Data['Birthday'] = '';
         $Data['Birthplace'] = '';
         $Data['Gender'] = '';
@@ -665,6 +664,16 @@ class Service extends AbstractService
         } else {
             $tblStudentEducation = DivisionCourse::useService()->getStudentEducationByPersonAndDate($tblPerson);
         }
+
+        // Klasse bei Abgängern
+        if (!$tblStudentEducation) {
+            if (($tblStudentEducationList = DivisionCourse::useService()->getStudentEducationListByPerson($tblPerson))) {
+                /** @var TblStudentEducation $tblStudentEducation */
+                $tblStudentEducation = current($this->getSorter($tblStudentEducationList)->sortObjectBy('YearNameForSorter', null, Sorter::ORDER_DESC));
+            }
+        }
+
+        $MaxDate = null;
         if ($tblStudentEducation) {
             // Schuldaten der Schule des Schülers
             if (($tblCompanySchool = $tblStudentEducation->getServiceTblCompany())) {
@@ -685,19 +694,23 @@ class Service extends AbstractService
 
             if (($tblDivision = $tblStudentEducation->getTblDivision())) {
                 $Data['Division'] = $tblDivision->getName();
+                $tblYear = $tblYear ?: $tblDivision->getServiceTblYear();
             } elseif (($tblCoreGroup = $tblStudentEducation->getTblCoreGroup())) {
                 $Data['Division'] = $tblCoreGroup->getName();
+                $tblYear = $tblYear ?: $tblDivision->getServiceTblYear();
+            }
+
+            if ($tblYear) {
+                list($startDate, $endDate) = Term::useService()->getStartDateAndEndDateOfYear($tblYear);
+                // Letztes Datum des aktuellen Schuljahres
+                /** @var DateTime $endDate */
+                if ($endDate) {
+                    $MaxDate = $endDate;
+                    $Data['LeaveDate'] = $endDate->format('d.m.Y');
+                }
             }
         }
-        // Prepare LeaveDate
-        $Now = new DateTime('now');
-        // increase year if date after 31.07.20xx
-        if ($Now > new DateTime('31.07.'.$Now->format('Y'))) {
-            $Now->add(new DateInterval('P1Y'));
-        }
-        $MaxDate = new DateTime('31.07.'.$Now->format('Y'));
-        $DateString = $MaxDate->format('d.m.Y');
-        $Data['LeaveDate'] = $DateString;
+
         if (($tblStudent = Student::useService()->getStudentByPerson($tblPerson))
             && ($tblStudentTransferType = Student::useService()->getStudentTransferTypeByIdentifier('LEAVE'))
             && ($tblStudentTransfer = Student::useService()->getStudentTransferByType($tblStudent, $tblStudentTransferType))
@@ -795,14 +808,15 @@ class Service extends AbstractService
     /**
      * @param TblPerson $tblPerson
      * @param TblYear|null $tblYear
+     * @param array $Data
      *
      * @return array
      */
-    public function getSignOutCertificateData(TblPerson $tblPerson, ?TblYear $tblYear = null): array
+    public function getSignOutCertificateData(TblPerson $tblPerson, ?TblYear $tblYear = null, array $Data = array()): array
     {
 //        $Data['PersonId'] = $tblPerson->getId();
         $Data['FirstLastName'] = $tblPerson->getFirstSecondName().' '.$tblPerson->getLastName();
-        $Data['Date'] = (new DateTime())->format('d.m.Y');
+        $Data['Date'] = isset($Data['Date']) ? $Data['Date'] : (new DateTime())->format('d.m.Y');
         $Data['BirthDate'] = '';
         $Data['BirthPlace'] = '';
         $Data['AddressStreet'] = '';
