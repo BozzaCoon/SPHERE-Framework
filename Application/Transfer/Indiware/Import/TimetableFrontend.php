@@ -32,6 +32,7 @@ use SPHERE\Common\Frontend\Layout\Structure\LayoutRow;
 use SPHERE\Common\Frontend\Link\Repository\Danger as DangerLink;
 use SPHERE\Common\Frontend\Link\Repository\Standard;
 use SPHERE\Common\Frontend\Message\Repository\Danger;
+use SPHERE\Common\Frontend\Message\Repository\Info;
 use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Frontend\Message\Repository\Warning;
 use SPHERE\Common\Frontend\Table\Structure\TableData;
@@ -79,8 +80,12 @@ class TimetableFrontend extends Extension implements IFrontendInterface
                 'DateTo' => 'Gültig bis',
                 'Option' => '',
             ), array(
+                'order' => array(
+                    array('2', 'desc'),
+                ),
                 'columnDefs' => array(
                     array('width' => '70px', "targets" => -1),
+                    array('type' => 'de_date', 'targets' => array(2, 3)),
                 ),
             ))
         )))));
@@ -110,6 +115,9 @@ class TimetableFrontend extends Extension implements IFrontendInterface
             new Layout(
                 new LayoutGroup(
                     new LayoutRow(array(
+                        new LayoutColumn(
+                            new Info('Bitte stellen Sie sicher, dass das Startdatum innerhalb des gewünschten Schuljahres liegt', null, false, '5', '5')
+                        , 6),
                         new LayoutColumn(
                             Timetable::useService()->readTimetableFromFile($Form, $File, $Data)
                         )

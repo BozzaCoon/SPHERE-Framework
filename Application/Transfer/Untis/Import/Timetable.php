@@ -5,6 +5,8 @@ use MOC\V\Component\Document\Exception\DocumentTypeException as DocumentTypeExce
 use SPHERE\Application\Document\Storage\FilePointer;
 use SPHERE\Application\Education\ClassRegister\Timetable\Timetable as TimetableClassregister;
 use SPHERE\Application\IModuleInterface;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Consumer as GatekeeperConsumer;
+use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Service\Entity\TblConsumer;
 use SPHERE\Common\Frontend\Form\Repository\Field\DatePicker;
 use SPHERE\Common\Frontend\Form\Repository\Field\FileUpload;
 use SPHERE\Common\Frontend\Form\Repository\Field\RadioBox;
@@ -21,6 +23,7 @@ use SPHERE\Common\Frontend\Layout\Repository\Listing;
 use SPHERE\Common\Frontend\Layout\Repository\Well;
 use SPHERE\Common\Frontend\Link\Repository\Danger as DangerLink;
 use SPHERE\Common\Frontend\Message\Repository\Danger;
+use SPHERE\Common\Frontend\Message\Repository\Info;
 use SPHERE\Common\Frontend\Text\Repository\Bold;
 use SPHERE\Common\Frontend\Text\Repository\Warning as WarningText;
 use SPHERE\Common\Main;
@@ -113,8 +116,12 @@ class Timetable extends Extension implements IModuleInterface
                 'DateTo' => 'Gültig bis',
                 'Option' => '',
             ), array(
+                'order' => array(
+                    array('2', 'desc'),
+                ),
                 'columnDefs' => array(
                     array('width' => '70px', "targets" => -1),
+                    array('type' => 'de_date', 'targets' => array(2, 3)),
                 ),
             ))
         )))));
@@ -141,6 +148,9 @@ class Timetable extends Extension implements IModuleInterface
             new Layout(
                 new LayoutGroup(
                     new LayoutRow(array(
+                        new LayoutColumn(
+                            new Info('Bitte stellen Sie sicher, dass das Startdatum innerhalb des gewünschten Schuljahres liegt', null, false, '5', '5')
+                        , 6),
                         new LayoutColumn(
                             Timetable::useService()->readTimetableFromFile($Form, $File, $Data)
                         )
@@ -212,16 +222,20 @@ class Timetable extends Extension implements IModuleInterface
      * @param array $Data
      *
      * @return Layout
-     * @throws \Exception
      */
-    public function frontendImportTimetable(File $File, array $Data = array())
+    public function frontendImportTimetable(File $File, array $Data = array()): Layout
     {
 
         $Payload001 = new FilePointer('csv');
 
         $fileContent = file_get_contents($File->getRealPath());
-        $Payload001->setFileContentWithEncoding($fileContent);
-//        $Payload001->setFileContent($fileContent);
+        // wahrscheinlich sind die verschiedenen Untis Versionen verschieden codiert
+        // Herausforderung sind die Umlaute
+//        if (GatekeeperConsumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_SACHSEN, 'HOGA')) {
+//            $Payload001->setFileContent($fileContent);
+//        } else {
+            $Payload001->setFileContentWithEncoding($fileContent);
+//        }
         $Payload001->saveFile();
 
         $Gateway001 = new TimetableGPU001($Payload001->getRealPath(), $Data);

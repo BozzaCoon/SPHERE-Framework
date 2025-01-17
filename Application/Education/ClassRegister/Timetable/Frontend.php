@@ -138,9 +138,15 @@ class Frontend extends Extension implements IFrontendInterface
                 'Option' => '',
             ),
             array(
-                'columnDefs' => array(array('width' => '140px', "targets" => -1),
-            ),
-        ));
+                'order' => array(
+                    array('2', 'desc'),
+                ),
+                'columnDefs' => array(
+                    array('width' => '140px', "targets" => -1),
+                    array('type' => 'de_date', 'targets' => array(2, 3)),
+                ),
+            )
+        );
     }
 
     /**
@@ -880,7 +886,7 @@ class Frontend extends Extension implements IFrontendInterface
             }
 
             $columns = array();
-            if (($fromDateTime = $tblTimetable->getDateFrom(true)) && ($toDateTime = $tblTimetable->getDateTo(true))
+            if (($fromDateTime = new \DateTime($tblTimetable->getDateFrom())) && ($toDateTime = $tblTimetable->getDateTo(true))
                 && $toDateTime > $fromDateTime
             ) {
                 while ($fromDateTime <= $toDateTime) {

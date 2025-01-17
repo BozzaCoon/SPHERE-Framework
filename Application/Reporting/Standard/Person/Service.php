@@ -2508,7 +2508,7 @@ class Service extends Extension
                                 if($PhoneDescriptionCustody == 'Festnetz'){
                                     if ($tblToPersonCustody->getIsEmergencyContact()) {
                                         if ($item[$TypeName . $Rank . '_PhoneFixedEmergency']) {
-                                            $item[$TypeName . $Rank . '_PhoneFixedEmergency'] = $item[$TypeName . $Rank . '_PhoneFixedEmergency'] . ', ';
+                                            $item[$TypeName . $Rank . '_PhoneFixedEmergency'] .= ', ';
                                         }
                                         $item[$TypeName . $Rank . '_PhoneFixedEmergency'] = $item[$TypeName . $Rank . '_PhoneFixedEmergency'] . $tblPhoneCustody->getNumber()
                                             . ($tblToPersonCustody->getRemark() ? ' (' . $tblToPersonCustody->getRemark() . ')' : '');
@@ -2516,14 +2516,14 @@ class Service extends Extension
                                         switch ($PhoneNameCustody) {
                                             case 'Privat':
                                                 if ($item[$TypeName . $Rank . '_PhoneFixedPrivate']) {
-                                                    $item[$TypeName . $Rank . '_PhoneFixedPrivate'] = $item[$TypeName . $Rank . '_PhoneFixedPrivate'] . ', ';
+                                                    $item[$TypeName . $Rank . '_PhoneFixedPrivate'] .= ', ';
                                                 }
-                                                $item[$TypeName . $Rank . '_PhoneFixedPrivate'] = $tblPhoneCustody->getNumber()
+                                                $item[$TypeName . $Rank . '_PhoneFixedPrivate'] = $item[$TypeName . $Rank . '_PhoneFixedPrivate'].$tblPhoneCustody->getNumber()
                                                     . ($tblToPersonCustody->getRemark() ? ' (' . $tblToPersonCustody->getRemark() . ')' : '');
                                                 break;
                                             case 'Geschäftlich':
                                                 if ($item[$TypeName . $Rank . '_PhoneFixedWork']) {
-                                                    $item[$TypeName . $Rank . '_PhoneFixedWork'] = $item[$TypeName . $Rank . '_PhoneFixedWork'] . ', ';
+                                                    $item[$TypeName . $Rank . '_PhoneFixedWork'] .= ', ';
                                                 }
                                                 $item[$TypeName . $Rank . '_PhoneFixedWork'] = $item[$TypeName . $Rank . '_PhoneFixedWork'] . $tblPhoneCustody->getNumber()
                                                     . ($tblToPersonCustody->getRemark() ? ' (' . $tblToPersonCustody->getRemark() . ')' : '');
@@ -2533,7 +2533,7 @@ class Service extends Extension
                                 } elseif($PhoneDescriptionCustody == 'Mobil') {
                                     if ($tblToPersonCustody->getIsEmergencyContact()) {
                                         if ($item[$TypeName . $Rank . '_PhoneMobileEmergency']) {
-                                            $item[$TypeName . $Rank . '_PhoneMobileEmergency'] = ', ';
+                                            $item[$TypeName . $Rank . '_PhoneMobileEmergency'] .= ', ';
                                         }
                                         $item[$TypeName . $Rank . '_PhoneMobileEmergency'] = $item[$TypeName . $Rank . '_PhoneMobileEmergency'] . $tblPhoneCustody->getNumber()
                                             . ($tblToPersonCustody->getRemark() ? ' (' . $tblToPersonCustody->getRemark() . ')' : '');
@@ -2541,14 +2541,14 @@ class Service extends Extension
                                         switch ($PhoneNameCustody) {
                                             case 'Privat':
                                                 if ($item[$TypeName . $Rank . '_PhoneMobilePrivate']) {
-                                                    $item[$TypeName . $Rank . '_PhoneMobilePrivate'] = $item[$TypeName . $Rank . '_PhoneMobilePrivate'] . ', ';
+                                                    $item[$TypeName . $Rank . '_PhoneMobilePrivate'] .= ', ';
                                                 }
                                                 $item[$TypeName . $Rank . '_PhoneMobilePrivate'] = $item[$TypeName . $Rank . '_PhoneMobilePrivate'] . $tblPhoneCustody->getNumber()
                                                     . ($tblToPersonCustody->getRemark() ? ' (' . $tblToPersonCustody->getRemark() . ')' : '');
                                                 break;
                                             case 'Geschäftlich':
                                                 if ($item[$TypeName . $Rank . '_PhoneMobileWork']) {
-                                                    $item[$TypeName . $Rank . '_PhoneMobileWork'] = $item[$TypeName . $Rank . '_PhoneMobileWork'] . ', ';
+                                                    $item[$TypeName . $Rank . '_PhoneMobileWork'] .= ', ';
                                                 }
                                                 $item[$TypeName . $Rank . '_PhoneMobileWork'] = $item[$TypeName . $Rank . '_PhoneMobileWork'] . $tblPhoneCustody->getNumber()
                                                     . ($tblToPersonCustody->getRemark() ? ' (' . $tblToPersonCustody->getRemark() . ')' : '');

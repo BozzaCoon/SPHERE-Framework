@@ -6,7 +6,6 @@ use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Data;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourseMemberType;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourseType;
-use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblStudentEducation;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblStudentSubject;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblSubjectTable;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\VirtualSubject;
@@ -30,6 +29,11 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      */
     public function getStudentSubjectListByPersonAndYear(TblPerson $tblPerson, TblYear $tblYear, ?bool $hasGrading = null)
     {
+        // ohne Schüler-Bildung für das Schuljahr keine Fächer
+        if (!DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+            return false;
+        }
+
         return (new Data($this->getBinding()))->getStudentSubjectListByPersonAndYear($tblPerson, $tblYear, $hasGrading);
     }
 
@@ -39,11 +43,19 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      * @param TblPerson $tblPerson
      * @param TblYear $tblYear
      * @param TblSubject $tblSubject
+     * @param bool $ignoreStudentEducationCheck
      *
      * @return false|TblStudentSubject
      */
-    public function getStudentSubjectByPersonAndYearAndSubject(TblPerson $tblPerson, TblYear $tblYear, TblSubject $tblSubject)
+    public function getStudentSubjectByPersonAndYearAndSubject(TblPerson $tblPerson, TblYear $tblYear, TblSubject $tblSubject, bool $ignoreStudentEducationCheck = false)
     {
+        if (!$ignoreStudentEducationCheck) {
+            // ohne Schüler-Bildung für das Schuljahr keine Fächer
+            if (!DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+                return false;
+            }
+        }
+
         return (new Data($this->getBinding()))->getStudentSubjectByPersonAndYearAndSubject($tblPerson, $tblYear, $tblSubject);
     }
 
@@ -58,6 +70,11 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      */
     public function getStudentSubjectByPersonAndYearAndSubjectForCourseSystem(TblPerson $tblPerson, TblYear $tblYear, TblSubject $tblSubject)
     {
+        // ohne Schüler-Bildung für das Schuljahr keine Fächer
+        if (!DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+            return false;
+        }
+
         return (new Data($this->getBinding()))->getStudentSubjectByPersonAndYearAndSubjectForCourseSystem($tblPerson, $tblYear, $tblSubject);
     }
 
@@ -67,11 +84,18 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      * @param TblPerson $tblPerson
      * @param TblYear $tblYear
      * @param TblSubject $tblSubject
+     * @param bool $showWithoutStudentEducation
      *
      * @return false|VirtualSubject
      */
-    public function getVirtualSubjectFromRealAndVirtualByPersonAndYearAndSubject(TblPerson $tblPerson, TblYear $tblYear, TblSubject $tblSubject)
-    {
+    public function getVirtualSubjectFromRealAndVirtualByPersonAndYearAndSubject(
+        TblPerson $tblPerson, TblYear $tblYear, TblSubject $tblSubject, bool $showWithoutStudentEducation = false
+    ): VirtualSubject|bool {
+        // ohne Schüler-Bildung für das Schuljahr keine Fächer
+        if (!$showWithoutStudentEducation && !DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+            return false;
+        }
+
         // SEKII
         if (DivisionCourse::useService()->getIsCourseSystemByPersonAndYear($tblPerson, $tblYear)) {
             // gespeichertes Fach - StudentSubject SEKII
@@ -111,6 +135,11 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      */
     public function getStudentSubjectByPersonAndYearAndSubjectTable(TblPerson $tblPerson, TblYear $tblYear, TblSubjectTable $tblSubjectTable)
     {
+        // ohne Schüler-Bildung für das Schuljahr keine Fächer
+        if (!DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+            return false;
+        }
+
         return (new Data($this->getBinding()))->getStudentSubjectByPersonAndYearAndSubjectTable($tblPerson, $tblYear, $tblSubjectTable);
     }
 
@@ -125,6 +154,11 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      */
     private function getStudentSubjectListByPersonAndYearAndDivisionCourse(TblPerson $tblPerson, TblYear $tblYear, TblDivisionCourse $tblSubjectDivisionCourse)
     {
+        // ohne Schüler-Bildung für das Schuljahr keine Fächer
+        if (!DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+            return false;
+        }
+
         return (new Data($this->getBinding()))->getStudentSubjectListByPersonAndYearAndDivisionCourse($tblPerson, $tblYear, $tblSubjectDivisionCourse);
     }
 
@@ -135,10 +169,16 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
      * @param TblYear $tblYear
      * @param TblDivisionCourse $tblSubjectDivisionCourse
      * @param $Period
-     * @return TblStudentSubject|void
+     *
+     * @return TblStudentSubject|false
      */
     public function getStudentSubjectByPersonAndYearAndDivisionCourseAndPeriod(TblPerson $tblPerson, TblYear $tblYear, TblDivisionCourse $tblSubjectDivisionCourse, $Period)
     {
+        // ohne Schüler-Bildung für das Schuljahr keine Fächer
+        if (!DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)) {
+            return false;
+        }
+
         if (($tblStudentSubjectList = $this->getStudentSubjectListByPersonAndYearAndDivisionCourse($tblPerson, $tblYear, $tblSubjectDivisionCourse))) {
             foreach ($tblStudentSubjectList as $tblStudentSubject) {
                 if (($list = explode('/', $tblStudentSubject->getPeriodIdentifier()))
@@ -149,6 +189,8 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
                 }
             }
         }
+
+        return false;
     }
 
     /**
@@ -207,10 +249,22 @@ abstract class ServiceStudentSubject extends ServiceCourseSystem
     public function getStudentSubjectListBySubjectDivisionCourse(TblDivisionCourse $tblSubjectDivisionCourse)
     {
         if (($list = (new Data($this->getBinding()))->getStudentSubjectListBySubjectDivisionCourse($tblSubjectDivisionCourse))) {
-            return $this->getSorter($list)->sortObjectBy('SortPersonName', new StringGermanOrderSorter());
+            $list = $this->getSorter($list)->sortObjectBy('SortPersonName', new StringGermanOrderSorter());
+
+            $resultList = array();
+            if (($tblYear = $tblSubjectDivisionCourse->getServiceTblYear())) {
+                /** @var TblStudentSubject $item */
+                foreach ($list as $item) {
+                    if (($tblPerson = $item->getServiceTblPerson())
+                        && DivisionCourse::useService()->getStudentEducationByPersonAndYear($tblPerson, $tblYear)
+                    ) {
+                        $resultList[] = $item;
+                    }
+                }
+            }
         }
 
-        return false;
+        return empty($resultList) ? false : $resultList;
     }
 
     /**

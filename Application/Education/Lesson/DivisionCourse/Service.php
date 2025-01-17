@@ -401,6 +401,7 @@ class Service extends ServiceYearChange
     public function getIsCourseSystemBySchoolTypeAndLevel(TblType $tblSchoolType, int $level): bool
     {
         return ($tblSchoolType->getShortName() == 'Gy' && preg_match('!(11|12)!is', $level))
+            || ($tblSchoolType->getShortName() == 'GMS' && preg_match('!(11|12)!is', $level))
             || ($tblSchoolType->getShortName() == 'BGy' && preg_match('!(12|13)!is', $level));
     }
 
@@ -1474,6 +1475,17 @@ class Service extends ServiceYearChange
     public function getStudentEducationByPersonAndYear(TblPerson $tblPerson, TblYear $tblYear)
     {
         return (new Data($this->getBinding()))->getStudentEducationByPersonAndYear($tblPerson, $tblYear);
+    }
+
+    /**
+     * @param TblPerson $tblPerson
+     * @param TblYear $tblYear
+     *
+     * @return false|TblStudentEducation
+     */
+    public function getStudentEducationByPersonAndYearWithLeaved(TblPerson $tblPerson, TblYear $tblYear)
+    {
+        return (new Data($this->getBinding()))->getStudentEducationByPersonAndYearWithLeaved($tblPerson, $tblYear);
     }
 
     /**

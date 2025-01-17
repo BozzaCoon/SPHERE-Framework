@@ -1,5 +1,6 @@
 <?php
-namespace SPHERE\Application\Api\Education\Certificate\Generator\Repository;
+
+namespace SPHERE\Application\Api\Education\Certificate\Generator\Repository\FELS;
 
 use SPHERE\Application\Api\Education\Certificate\Generator\Certificate;
 use SPHERE\Application\Education\Certificate\Generator\Repository\Element;
@@ -7,14 +8,8 @@ use SPHERE\Application\Education\Certificate\Generator\Repository\Page;
 use SPHERE\Application\Education\Certificate\Generator\Repository\Slice;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 
-/**
- * Class MsHjInfo
- *
- * @package SPHERE\Application\Api\Education\Certificate\Certificate\Repository
- */
-class MsHjInfo extends Certificate
+class MsHj extends Certificate
 {
-
     /**
      * @param TblPerson|null $tblPerson
      * @return Page
@@ -23,17 +18,11 @@ class MsHjInfo extends Certificate
      */
     public function buildPages(TblPerson $tblPerson = null)
     {
-
         $personId = $tblPerson ? $tblPerson->getId() : 0;
 
-        $Header = $this->getHead($this->isSample());
-
         return (new Page())
-            ->addSlice(
-                $Header
-            )
-            ->addSlice($this->getSchoolName($personId))
-            ->addSlice($this->getCertificateHead('Halbjahresinformation der Oberschule'))
+            ->addSlice(FelsStyle::getHeader($this->isSample(), 'Oberschule'))
+            ->addSlice($this->getCertificateHead('Halbjahreszeugnis der Oberschule'))
             ->addSlice($this->getDivisionAndYear($personId, '20px', '1. Schulhalbjahr'))
             ->addSlice($this->getStudentName($personId))
             ->addSlice((new Slice())
@@ -60,12 +49,11 @@ class MsHjInfo extends Certificate
                 false,
                 false,
                 true
-            )->styleHeight('230px'))
-//            ->addSlice($this->getOrientationStandard($personId))
+            )->styleHeight('220px'))
             ->addSlice($this->getDescriptionHead($personId, true))
-            ->addSlice($this->getDescriptionContent($personId, '118px', '15px'))
+            ->addSlice($this->getDescriptionContent($personId, '178px', '15px'))
             ->addSlice($this->getDateLine($personId))
-            ->addSlice($this->getSignPart($personId, false))
+            ->addSlice($this->getSignPart($personId, true))
             ->addSlice($this->getParentSign())
             ->addSlice($this->getInfo('45px',
                 'Notenerläuterung:',
