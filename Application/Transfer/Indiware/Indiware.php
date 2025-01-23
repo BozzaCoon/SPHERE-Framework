@@ -8,12 +8,10 @@ use SPHERE\Application\Transfer\Indiware\Export\AppointmentGrade\AppointmentGrad
 use SPHERE\Application\Transfer\Indiware\Export\Export;
 use SPHERE\Application\Transfer\Indiware\Export\Meta\Meta;
 use SPHERE\Application\Transfer\Indiware\Import\Import;
-use SPHERE\Application\Transfer\Indiware\Import\Lectureship as ImportLectureship;
 use SPHERE\Application\Transfer\Indiware\Import\Lectureship\Lectureship as ImportLectureshipIndiware;
-use SPHERE\Application\Transfer\Indiware\Import\Replacement as ImportReplacement;
-use SPHERE\Application\Transfer\Indiware\Import\StudentCourse as ImportStudentCourse;
+use SPHERE\Application\Transfer\Indiware\Import\Replacement\Replacement as ImportReplacement;
 use SPHERE\Application\Transfer\Indiware\Import\StudentCourse\StudentCourse;
-use SPHERE\Application\Transfer\Indiware\Import\Timetable as ImportTimetable;
+use SPHERE\Application\Transfer\Indiware\Import\Timetable\Timetable as ImportTimetable;
 use SPHERE\Common\Frontend\Layout\Repository\Thumbnail;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutColumn;

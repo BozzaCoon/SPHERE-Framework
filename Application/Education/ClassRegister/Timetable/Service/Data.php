@@ -6,7 +6,12 @@ use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimet
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetable;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacement;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableWeek;
+use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
+use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblSubject;
+use SPHERE\Application\Education\Lesson\Subject\Subject;
+use SPHERE\Application\Education\School\Course\Service\Entity\TblCourse;
+use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\Platform\System\Protocol\Protocol;
 use SPHERE\System\Database\Binding\AbstractData;
@@ -267,6 +272,57 @@ class Data extends AbstractData
     }
 
     /**
+     * @param DateTime          $Date
+     * @param int               $Hour
+     * @param TblDivisionCourse $tblCourse
+     * @param TblSubject|null   $tblSubstituteSubject
+     *
+     * @return bool|TblTimetableReplacement|TblTimetableReplacement[]
+     */
+    public function getTimeTableReplacementbyDateAndHourAndClass(DateTime $Date, int $Hour, TblDivisionCourse $tblCourse, TblSubject $tblSubstituteSubject = null)
+    {
+
+        $Manager = $this->getEntityManager();
+        $queryBuilder = $Manager->getQueryBuilder();
+
+        if($tblSubstituteSubject){
+            $query = $queryBuilder->select('t')
+                ->from(__NAMESPACE__ . '\Entity\TblTimetableReplacement', 't')
+                ->where($queryBuilder->expr()->orX(
+                    $queryBuilder->expr()->eq('t.Date', '?1'),
+                    $queryBuilder->expr()->eq('t.Hour', '?2'),
+                    $queryBuilder->expr()->eq('t.serviceTblCourse', '?3'),
+                    $queryBuilder->expr()->eq('t.serviceTblSubstituteSubject', '?4'),
+                ))
+                ->setParameter(1, $Date)
+                ->setParameter(2, $Hour)
+                ->setParameter(3, $tblCourse->getId())
+                ->setParameter(4, $tblSubstituteSubject->getId())
+                ->getQuery();
+        } else {
+            $query = $queryBuilder->select('t')
+                ->from(__NAMESPACE__ . '\Entity\TblTimetableReplacement', 't')
+                ->where($queryBuilder->expr()->orX(
+                    $queryBuilder->expr()->eq('t.Date', '?1'),
+                    $queryBuilder->expr()->eq('t.Hour', '?2'),
+                    $queryBuilder->expr()->eq('t.serviceTblCourse', '?3'),
+                ))
+                ->setParameter(1, $Date)
+                ->setParameter(2, $Hour)
+                ->setParameter(3, $tblCourse->getId())
+                ->getQuery();
+        }
+
+        $resultList = $query->getResult();
+        if(empty($resultList)){
+            return null;
+        } elseif(count($resultList) > 1){
+            return $resultList;
+        }
+        return current($resultList);
+    }
+
+    /**
      * @return TblTimetable[]|null
      */
     public function getTimetableAll(): ?array
@@ -424,6 +480,65 @@ class Data extends AbstractData
                 $Entity->setServiceTblSubstituteSubject($Row['tblSubstituteSubject']);
                 $Entity->setServiceTblCourse($Row['tblCourse']);
                 $Entity->setServiceTblPerson($Row['tblPerson'] ?? null);
+                $Manager->bulkSaveEntity($Entity);
+                Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity, true);
+            }
+            $Manager->flushCache();
+            Protocol::useService()->flushBulkEntries();
+            return true;
+        }
+        return false;
+
+    }
+
+
+
+    /**
+     * @param array $ImportList
+     * required ArrayKeys
+     * [Date]
+     * [Hour]
+     * [Room]
+     * [subjectGroup]
+     * [IsCanceled]
+     * [tblSubject]
+     * [tblSubstituteSubject]
+     * [tblCourse]
+     * [tblPerson]
+     *
+     * @return bool
+     */
+    public function createTimetableReplacementJsonBulk($ImportList)
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        if (!empty($ImportList)) {
+            foreach ($ImportList as $Row) {
+                $Entity = new TblTimetableReplacement();
+                $Entity->setDate($Row['Date']);
+                $Entity->setHour($Row['Hour']);
+                $Entity->setRoom($Row['Room']);
+                if(isset($Row['IsCanceled'])){
+                    $Entity->setIsCanceled($Row['IsCanceled']);
+                } else {
+                    $Entity->setIsCanceled(false);
+                }
+                $Entity->setSubjectGroup('');
+                if(!isset($Row['tblSubject']) || !$Row['tblSubject']){
+                    $Row['tblSubject'] = null;
+                }
+                $Entity->setServiceTblSubject($Row['tblSubject']);
+                if(!isset($Row['tblSubstituteSubject']) || !$Row['tblSubstituteSubject']){
+                    $Row['tblSubstituteSubject'] = null;
+                }
+                $Entity->setServiceTblSubstituteSubject($Row['tblSubstituteSubject']);
+                if($Row['tblCourse']){
+                    $Entity->setServiceTblCourse($Row['tblCourse']);
+                }
+
+                if($Row['tblPerson'] ){
+                    $Entity->setServiceTblPerson($Row['tblPerson'] ?? null);
+                }
                 $Manager->bulkSaveEntity($Entity);
                 Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity, true);
             }

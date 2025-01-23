@@ -11,6 +11,7 @@ use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimet
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableWeek;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Setup;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
+use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblSubject;
 use SPHERE\Application\Education\Lesson\Subject\Subject;
 use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
@@ -141,6 +142,20 @@ class Service extends AbstractService
     }
 
     /**
+     * @param DateTime          $Date
+     * @param int               $Hour
+     * @param TblDivisionCourse $tblCourse
+     * @param TblSubject|null   $tblSubstituteSubject
+     *
+     * @return bool|TblTimetableReplacement|TblTimetableReplacement[]
+     */
+    public function getTimeTableReplacementbyDateAndHourAndClass(DateTime $Date, int $Hour, TblDivisionCourse $tblCourse, TblSubject $tblSubstituteSubject = null)
+    {
+
+        return (new Data($this->getBinding()))->getTimeTableReplacementbyDateAndHourAndClass($Date, $Hour, $tblCourse, $tblSubstituteSubject);
+    }
+
+    /**
      * @param string $Name
      * @param string $Description
      * @param DateTime $DateFrom
@@ -240,6 +255,27 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->createTimetableReplacementBulk($ImportList);
+    }
+
+    /**
+     * @param array $ImportList
+     * required ArrayKeys
+     * [hour]
+     * [room]
+     * [subjectGroup]
+     * [Date]
+     * [IsCanceled]
+     * [tblSubject]
+     * [tblSubstituteSubject]
+     * [tblCourse]
+     * [tblPerson]
+     *
+     * @return bool
+     */
+    public function createTimetableReplacementJsonBulk($ImportList)
+    {
+
+        return (new Data($this->getBinding()))->createTimetableReplacementJsonBulk($ImportList);
     }
 
     /**
