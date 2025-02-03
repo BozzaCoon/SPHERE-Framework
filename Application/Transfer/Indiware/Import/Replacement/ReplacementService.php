@@ -587,7 +587,6 @@ class ReplacementService
         $ArrayData = json_decode($Json, true);
         $schoolName = '';
         $importList = array();
-        $updateList = array();
         if(isset($ArrayData['Gesamtexport']['Vertretungsplan']['Vertretungsplan'])
             && ($ReplacementList = $ArrayData['Gesamtexport']['Vertretungsplan']['Vertretungsplan'])){
             foreach($ReplacementList as $Replacement){
@@ -601,85 +600,99 @@ class ReplacementService
                     foreach($ReplacementEntryList as $ReplacementEntry){
                         $item = array();
                         $Date = '';
+                        $DateString = '';
                         $Hour = '';
-                        $Subject = '';
-                        $SubjectV = '';
-                        $Teacher = '';
-                        $TeacherV = '';
-                        $Room = '';
+//                        $CourseList = array();
+                        $CourseStringV = '';
+                        $CourseListV = array();
+                        $SubjectString = '';
+                        $tblSubject = false;
+                        $SubjectStringV = '';
+                        $IsCanceled = false;
+                        $tblSubjectV = false;
+                        $PersonV = '';
+                        $tblPersonV = false;
+                        $RoomString = '';
                         $RoomV = false;
                         if(isset($ReplacementEntry['Ak_DatumVon'])){
-                            $Date = new DateTime($ReplacementEntry['Ak_DatumVon']);
+                            $DateString = $ReplacementEntry['Ak_DatumVon'];
+                            $Date = new DateTime($DateString);
                         }
                         $YearList = Term::useService()->getYearAllByDate($Date);
                         if(isset($ReplacementEntry['Ak_StundeVon'])){
                             $Hour = $ReplacementEntry['Ak_StundeVon'];
                         }
                         if(isset($ReplacementEntry['Ak_Fach'])){
-                            $Subject = $ReplacementEntry['Ak_Fach'];
+                            $SubjectString = $ReplacementEntry['Ak_Fach'];
+                            $tblSubject = Subject::useService()->getSubjectByAcronym($SubjectString);
                         }
                         if(isset($ReplacementEntry['Ak_VFach'])){
-                            $SubjectV = $ReplacementEntry['Ak_VFach'];
-                        }
-                        if(isset($ReplacementEntry['Lehrer'])){
-                            $Teacher = current($ReplacementEntry['Lehrer']);
+                            $SubjectStringV = $ReplacementEntry['Ak_VFach'];
+                            if($SubjectStringV == ''){
+                                $IsCanceled = true;
+                            } else {
+                                $tblSubjectV = Subject::useService()->getSubjectByAcronym($SubjectStringV);
+                            }
                         }
                         if(isset($ReplacementEntry['VLehrer'])){
-                            $TeacherV = current($ReplacementEntry['VLehrer']);
-                        }
-                        if(isset($ReplacementEntry['Raeume'])){
-                            $Room = current($ReplacementEntry['Raeume']);
+                            $PersonV = implode(', ', $ReplacementEntry['VLehrer']);
+                            $TeacherAcronymV = current($ReplacementEntry['VLehrer']);
+                            if(($tblTeacherV = Teacher::useService()->getTeacherByAcronym($TeacherAcronymV))){
+                                $tblPersonV = $tblTeacherV->getServiceTblPerson();
+                            }
                         }
                         if(isset($ReplacementEntry['VRaeume'])){
-                            $RoomV = current($ReplacementEntry['VRaeume']);
+                            $RoomString = $ReplacementEntry['VRaeume'];
+                            $RoomV = current($RoomString);
                         }
-
                         $count = 0;
                         if(isset($ReplacementEntry['Ak_StundenAnz'])){
                             $count = (int)$ReplacementEntry['Ak_StundenAnz'];
                         }
-                        if(isset($ReplacementEntry['Klassen']) && !empty($ReplacementEntry['Klassen'])){
-                            $CourseList = $ReplacementEntry['Klassen'];
-                            foreach($CourseList as &$Course){
-                                if($YearList){
-                                    foreach($YearList as $Year){
-                                        if(($tempCourse = DivisionCourse::useService()->getDivisionCourseByNameAndYear($Course, $Year))){
-                                            $Course = $tempCourse;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+//                        if(isset($ReplacementEntry['Klassen']) && !empty($ReplacementEntry['Klassen'])){
+//                            $CourseList = $ReplacementEntry['Klassen'];
+//                            foreach($CourseList as &$Course){
+//                                if($YearList){
+//                                    foreach($YearList as $Year){
+//                                        if(($tempCourse = DivisionCourse::useService()->getDivisionCourseByNameAndYear($Course, $Year))){
+//                                            $Course = $tempCourse;
+//                                            break;
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        }
                         if(isset($ReplacementEntry['VKlassen']) && !empty($ReplacementEntry['VKlassen'])){
+                            $CourseStringV = implode(', ', $CourseListV);
                             $CourseListV = $ReplacementEntry['VKlassen'];
                             foreach($CourseListV as &$CourseV){
                                 if($YearList){
                                     foreach($YearList as $Year){
                                         if(($tempCourse = DivisionCourse::useService()->getDivisionCourseByNameAndYear($CourseV, $Year))){
+                                            // string durch tblDivisionCourse ersetzen
                                             $CourseV = $tempCourse;
                                             break;
                                         }
                                     }
                                 }
-                                // ToDO bei korrekten Daten entfernen
-                                $CourseV = DivisionCourse::useService()->getDivisionCourseById(1);
                             }
                         }
 
+                        $item['SchoolName'] = $schoolName;
+                        $item['ReplacementId'] = '';
                         $item['Date'] = $Date;
-                        $tblSubject = Subject::useService()->getSubjectById(9);
-                        $item['serviceTblSubject'] = $tblSubject;
-//                            $item['serviceTblSubject'] = $SubjectV;
-                        // ToDO bei korrekten Daten entfernen
-                        $item['serviceTblSubstituteSubject'] = null;
-//                        $item['serviceTblSubstituteSubject'] = $Subject;
-                        // eigentlich array
-                        // $item['tblPerson'] = $TeacherV;
-                        $tblPerson = Person::useService()->getPersonById(1);
-                        $item['tblPerson'] = $tblPerson;
-                        // eigentlich array
+                        $item['DateString'] = $DateString;
                         $item['Room'] = $RoomV;
+                        $item['RoomString'] = $RoomString;
+                        $item['Course'] = $CourseStringV;
+                        $item['IsCanceled'] = $IsCanceled;
+                        $item['Subject'] = $SubjectString;
+                        $item['tblSubject'] = $tblSubject;
+                        $item['SubjectSubstitute'] = $SubjectStringV;
+                        $item['tblSubstituteSubject'] = $tblSubjectV;
+                        // eigentlich array
+                        $item['PersonAcronym'] = $PersonV;
+                        $item['tblPersonV'] = $tblPersonV;
 
                         // Mehrere Einträge erzeugen wenn notwendig
                         if(!empty($CourseListV)){
@@ -699,26 +712,59 @@ class ReplacementService
                                 }
                             }
                         }
-
                     }
                 }
-                Debugger::devDump($schoolName);
-//                Debugger::devDump($importList);
-//                Debugger::devDump($ReplacementEntryList);
             }
 
-            foreach($importList as &$import){
-                if(($tblTimeTableReplacement = TimetableTool::useService()->getTimeTableReplacementbyDateAndHourAndClass(
-                    $import['Date'], $import['Hour'], $import['tblCourse'], $import['serviceTblSubstituteSubject']))){
-                    $updateList[] = $import;
-                    $import = false;
+            // nicht funktionale Einträge rausfiltern
+            if(!empty($importList)){
+                $errorList = array();
+                foreach($importList as &$import){
+                    $errorList[] = $this->validateImport($import);
+                }
+                $errorList = array_filter($errorList);
+                $importList = array_filter($importList);
+                // save ErrorList
+                if(!empty($errorList)) {
+                    TimetableTool::useService()->createTimetableReplacementLog($errorList);
+                }
+                // save TimetableReplacement
+                if(!empty($importList)){
+                    TimetableTool::useService()->createTimetableReplacementJsonBulk($importList);
                 }
             }
-            $importList = array_filter($importList);
-            Debugger::devDump($importList);
-            Debugger::devDump($updateList);
-
-            TimetableTool::useService()->createTimetableReplacementJsonBulk($importList);
         }
+    }
+
+    private function validateImport(&$import)
+    {
+
+        $errors = [];
+        if (empty($import['SchoolName'])) {
+            $errors[] = '[SchoolName] => keine Schule angegeben';
+        }
+        if (empty($import['Date'])) {
+            $errors[] = '[Date] => kein Datum angegeben';
+        }
+        if (empty($import['Hour'])) {
+            $errors[] = '[Hour] => keine Stunde angegeben';
+        }
+        if (empty($import['tblCourse'])) {
+            $errors[] = $import['KlasseV'].' - [tblCourse] => keine passende Klasse gefunden';
+        }
+        if ($import['IsCanceled'] || empty($import['tblSubstituteSubject'])) {
+            $errors[] = $import['SubjectSubstitute'].' - [tblSubstituteSubject] => kein Vertretungsfach gefunden';
+        }
+        if (empty($import['tblPersonV'])) {
+            $errors[] = $import['PersonAcronym'].' - [tblPersonV] => keine Vertretung gefunden';
+        }
+
+        if (!empty($errors)) {
+            $ErrorList = $import;
+            $ErrorList['Error'] = $errors;
+            $import = false;
+            return $ErrorList;
+        }
+        return false;
     }
 }

@@ -4,6 +4,7 @@ namespace SPHERE\Application\Transfer\Indiware;
 
 use MOC\V\Core\FileSystem\FileSystem;
 use SPHERE\Application\IApplicationInterface;
+use SPHERE\Application\Transfer\Indiware\ErrorLog\ErrorLog;
 use SPHERE\Application\Transfer\Indiware\Export\AppointmentGrade\AppointmentGrade;
 use SPHERE\Application\Transfer\Indiware\Export\Export;
 use SPHERE\Application\Transfer\Indiware\Export\Meta\Meta;
@@ -41,6 +42,7 @@ class Indiware implements IApplicationInterface
         AppointmentGrade::registerModule();
         Meta::registerModule();
 //        ExportLectureship::registerModule();
+        ErrorLog::registerModule();
 
         Main::getDisplay()->addApplicationNavigation(
             new Link(new Link\Route(__NAMESPACE__), new Link\Name('Indiware'))

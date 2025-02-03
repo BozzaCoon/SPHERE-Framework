@@ -250,7 +250,6 @@ class TblTimetableReplacement extends Element
      */
     public function setServiceTblSubstituteSubject(TblSubject $tblSubstituteSubject = null): void
     {
-        Debugger::devDump($tblSubstituteSubject);
         $this->serviceTblSubstituteSubject = ( !$tblSubstituteSubject ? null : $tblSubstituteSubject->getId() );
     }
 

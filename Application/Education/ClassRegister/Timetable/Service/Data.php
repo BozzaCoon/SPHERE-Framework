@@ -5,17 +5,15 @@ use DateTime;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableNode;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetable;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacement;
+use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacementLog;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableWeek;
-use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
 use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblSubject;
-use SPHERE\Application\Education\Lesson\Subject\Subject;
-use SPHERE\Application\Education\School\Course\Service\Entity\TblCourse;
-use SPHERE\Application\People\Person\Person;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\Platform\System\Protocol\Protocol;
 use SPHERE\System\Database\Binding\AbstractData;
 use SPHERE\System\Database\Fitting\Element;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Data
@@ -285,33 +283,33 @@ class Data extends AbstractData
         $Manager = $this->getEntityManager();
         $queryBuilder = $Manager->getQueryBuilder();
 
-        if($tblSubstituteSubject){
+//        if($tblSubstituteSubject){
             $query = $queryBuilder->select('t')
                 ->from(__NAMESPACE__ . '\Entity\TblTimetableReplacement', 't')
-                ->where($queryBuilder->expr()->orX(
+                ->where(
                     $queryBuilder->expr()->eq('t.Date', '?1'),
                     $queryBuilder->expr()->eq('t.Hour', '?2'),
                     $queryBuilder->expr()->eq('t.serviceTblCourse', '?3'),
                     $queryBuilder->expr()->eq('t.serviceTblSubstituteSubject', '?4'),
-                ))
+                )
                 ->setParameter(1, $Date)
                 ->setParameter(2, $Hour)
                 ->setParameter(3, $tblCourse->getId())
-                ->setParameter(4, $tblSubstituteSubject->getId())
+                ->setParameter(4, $tblSubstituteSubject ? $tblSubstituteSubject->getId(): null )
                 ->getQuery();
-        } else {
-            $query = $queryBuilder->select('t')
-                ->from(__NAMESPACE__ . '\Entity\TblTimetableReplacement', 't')
-                ->where($queryBuilder->expr()->orX(
-                    $queryBuilder->expr()->eq('t.Date', '?1'),
-                    $queryBuilder->expr()->eq('t.Hour', '?2'),
-                    $queryBuilder->expr()->eq('t.serviceTblCourse', '?3'),
-                ))
-                ->setParameter(1, $Date)
-                ->setParameter(2, $Hour)
-                ->setParameter(3, $tblCourse->getId())
-                ->getQuery();
-        }
+//        } else {
+//            $query = $queryBuilder->select('t')
+//                ->from(__NAMESPACE__ . '\Entity\TblTimetableReplacement', 't')
+//                ->where(
+//                    $queryBuilder->expr()->eq('t.Date', '?1'),
+//                    $queryBuilder->expr()->eq('t.Hour', '?2'),
+//                    $queryBuilder->expr()->eq('t.serviceTblCourse', '?3'),
+//                )
+//                ->setParameter(1, $Date)
+//                ->setParameter(2, $Hour)
+//                ->setParameter(3, $tblCourse->getId())
+//                ->getQuery();
+//        }
 
         $resultList = $query->getResult();
         if(empty($resultList)){
@@ -330,6 +328,31 @@ class Data extends AbstractData
 
         /* @var TblTimetable[] $EntityList */
         $EntityList = $this->getCachedEntityList(__Method__, $this->getConnection()->getEntityManager(), 'TblTimetable');
+        return (false === $EntityList ? null : $EntityList);
+    }
+
+    /**
+     * @return TblTimetableReplacementLog[]|null
+     */
+    public function getTimetableReplacementLogAll()
+    {
+
+        /* @var TblTimetableReplacementLog[] $EntityList */
+        $EntityList = $this->getCachedEntityList(__Method__, $this->getConnection()->getEntityManager(), 'TblTimetableReplacementLog');
+        return (false === $EntityList ? null : $EntityList);
+    }
+
+    /**
+     * @return TblTimetableReplacementLog[]|null
+     */
+    public function getTimetableReplacementLogBySchoolName(string $SchoolName)
+    {
+
+        /* @var TblTimetableReplacementLog[] $EntityList */
+        $EntityList = $this->getCachedEntityListBy(__Method__, $this->getConnection()->getEntityManager(), 'TblTimetableReplacementLog',
+        array(
+            TblTimetableReplacementLog::ATTR_SCHOOL_NAME => $SchoolName
+        ));
         return (false === $EntityList ? null : $EntityList);
     }
 
@@ -480,6 +503,7 @@ class Data extends AbstractData
                 $Entity->setServiceTblSubstituteSubject($Row['tblSubstituteSubject']);
                 $Entity->setServiceTblCourse($Row['tblCourse']);
                 $Entity->setServiceTblPerson($Row['tblPerson'] ?? null);
+                Debugger::devDump($Entity);
                 $Manager->bulkSaveEntity($Entity);
                 Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity, true);
             }
@@ -490,8 +514,6 @@ class Data extends AbstractData
         return false;
 
     }
-
-
 
     /**
      * @param array $ImportList
@@ -508,7 +530,7 @@ class Data extends AbstractData
      *
      * @return bool
      */
-    public function createTimetableReplacementJsonBulk($ImportList)
+    public function createTimetableReplacementJsonBulk(array $ImportList):bool
     {
 
         $Manager = $this->getConnection()->getEntityManager();
@@ -518,26 +540,21 @@ class Data extends AbstractData
                 $Entity->setDate($Row['Date']);
                 $Entity->setHour($Row['Hour']);
                 $Entity->setRoom($Row['Room']);
-                if(isset($Row['IsCanceled'])){
-                    $Entity->setIsCanceled($Row['IsCanceled']);
-                } else {
-                    $Entity->setIsCanceled(false);
-                }
+                $Entity->setIsCanceled($Row['IsCanceled']);
                 $Entity->setSubjectGroup('');
-                if(!isset($Row['tblSubject']) || !$Row['tblSubject']){
-                    $Row['tblSubject'] = null;
+                if(isset($Row['tblSubject']) && $Row['tblSubject']){
+                    $Entity->setServiceTblSubject($Row['tblSubject']);
                 }
-                $Entity->setServiceTblSubject($Row['tblSubject']);
-                if(!isset($Row['tblSubstituteSubject']) || !$Row['tblSubstituteSubject']){
-                    $Row['tblSubstituteSubject'] = null;
+                if(isset($Row['tblSubstituteSubject']) && $Row['tblSubstituteSubject']){
+                    $Entity->setServiceTblSubstituteSubject($Row['tblSubstituteSubject']);
                 }
-                $Entity->setServiceTblSubstituteSubject($Row['tblSubstituteSubject']);
-                if($Row['tblCourse']){
+
+                if(isset($Row['tblCourse']) && $Row['tblCourse']){
                     $Entity->setServiceTblCourse($Row['tblCourse']);
                 }
 
-                if($Row['tblPerson'] ){
-                    $Entity->setServiceTblPerson($Row['tblPerson'] ?? null);
+                if(isset($Row['tblPersonV']) && $Row['tblPersonV'] ){
+                    $Entity->setServiceTblPerson($Row['tblPersonV'] ?? null);
                 }
                 $Manager->bulkSaveEntity($Entity);
                 Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity, true);
@@ -547,7 +564,99 @@ class Data extends AbstractData
             return true;
         }
         return false;
+    }
 
+    /**
+     * @param array $ImportList
+     * required ArrayKeys
+     * [Date]
+     * [Hour]
+     * [Room]
+     * [subjectGroup]
+     * [IsCanceled]
+     * [tblSubject]
+     * [tblSubstituteSubject]
+     * [tblCourse]
+     * [tblPerson]
+     *
+     * @return bool
+     */
+    public function updateTimetableReplacementJsonBulk(array $UpdateList):bool
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        if (!empty($UpdateList)) {
+            foreach ($UpdateList as $Row) {
+                /** @var TblTimetableReplacement $Entity */
+                $Entity = $Manager->getEntityById('TblTimetableReplacement', $Row['ReplacementId']);
+                $Protocol = clone $Entity;
+                if($Entity){
+                    $Entity->setDate($Row['Date']);
+                    $Entity->setHour($Row['Hour']);
+                    $Entity->setRoom($Row['Room']);
+                    if(isset($Row['IsCanceled'])){
+                        $Entity->setIsCanceled($Row['IsCanceled']);
+                    } else {
+                        $Entity->setIsCanceled(false);
+                    }
+                    $Entity->setSubjectGroup('');
+//                    if(!isset($Row['tblSubject']) || !$Row['tblSubject']){
+//                        $Row['tblSubject'] = null;
+//                    }
+                    if(isset($Row['tblSubject']) && $Row['tblSubject']){
+                        $Entity->setServiceTblSubject($Row['tblSubject']);
+                    }
+                    if(isset($Row['tblSubstituteSubject']) && $Row['tblSubstituteSubject']){
+                        $Entity->setServiceTblSubstituteSubject($Row['tblSubstituteSubject']);
+                    }
+
+                    if($Row['tblCourse']){
+                        $Entity->setServiceTblCourse($Row['tblCourse']);
+                    }
+
+                    if($Row['tblPersonV']){
+                        $Entity->setServiceTblPerson($Row['tblPersonV'] ?? null);
+                    }
+                    $Manager->bulkSaveEntity($Entity);
+                    Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(), $Protocol, $Entity, true);
+                }
+            }
+            $Manager->flushCache();
+            Protocol::useService()->flushBulkEntries();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param array $ErrorList
+     * @return bool
+     */
+    public function createTimetableReplacementLog(array $ErrorList):bool
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        if (!empty($ErrorList)) {
+            foreach ($ErrorList as $Row) {
+                $Entity = new TblTimetableReplacementLog();
+                $Entity->setSchoolName($Row['SchoolName']);
+                $Entity->setDate($Row['DateString']);
+                $Entity->setHour($Row['Hour']);
+                $Entity->setRoom($Row['Room']);
+                $Entity->setIsCanceled($Row['IsCanceled']);
+                $Entity->setSubject($Row['Subject']);
+                $Entity->setSubjectSubstitute($Row['SubjectSubstitute']);
+                $Entity->setCourse($Row['Course']);
+                $Entity->setPersonAcronym($Row['PersonAcronym']);
+                $Entity->setError(implode(';', $Row['Error']));
+                $Manager->bulkSaveEntity($Entity);
+                Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity, true);
+            }
+            $Manager->flushCache();
+            Protocol::useService()->flushBulkEntries();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -715,5 +824,26 @@ class Data extends AbstractData
         Protocol::useService()->flushBulkEntries();
 
         return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function destroyTimetableReplacementLogAllBulk(): bool
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        $EntityList = $Manager->getEntity('TblTimetableReplacementLog')->findAll();
+
+        if (!empty($EntityList)) {
+            foreach ($EntityList as $Entity) {
+                $Manager->bulkKillEntity($Entity);
+//                Protocol::useService()->createDeleteEntry($this->getConnection()->getDatabase(), $Entity, true);
+            }
+            $Manager->flushCache();
+//            Protocol::useService()->flushBulkEntries();
+            return true;
+        }
+        return false;
     }
 }

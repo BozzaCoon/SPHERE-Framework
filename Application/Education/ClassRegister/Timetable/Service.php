@@ -8,8 +8,10 @@ use SPHERE\Application\Education\ClassRegister\Timetable\Service\Data;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetable;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacement;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableNode;
+use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacementLog;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableWeek;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Setup;
+use SPHERE\Application\Education\ClassRegister\Timetable\Timetable as TimetableTool;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
 use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblSubject;
 use SPHERE\Application\Education\Lesson\Subject\Subject;
@@ -25,6 +27,7 @@ use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Frontend\Table\Structure\TableData;
 use SPHERE\Common\Window\Redirect;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Service
@@ -156,6 +159,25 @@ class Service extends AbstractService
     }
 
     /**
+     * @return TblTimetableReplacementLog[]|null
+     */
+    public function getTimetableReplacementLogAll()
+    {
+
+        return (new Data($this->getBinding()))->getTimetableReplacementLogAll();
+    }
+
+    /**
+     * @param string $SchoolName
+     * @return TblTimetableReplacementLog[]|null
+     */
+    public function getTimetableReplacementLogBySchoolName(string $SchoolName)
+    {
+
+        return (new Data($this->getBinding()))->getTimetableReplacementLogBySchoolName($SchoolName);
+    }
+
+    /**
      * @param string $Name
      * @param string $Description
      * @param DateTime $DateFrom
@@ -272,10 +294,61 @@ class Service extends AbstractService
      *
      * @return bool
      */
-    public function createTimetableReplacementJsonBulk($ImportList)
+    public function createTimetableReplacementJsonBulk($ImportList):bool
+    {
+        $UpdateList = array();
+        foreach($ImportList as &$import){
+            if(($tblTimeTableReplacement = TimetableTool::useService()->getTimeTableReplacementbyDateAndHourAndClass(
+                $import['Date'], $import['Hour'], $import['tblCourse'], $import['tblSubstituteSubject']))){
+                if(!is_array($tblTimeTableReplacement)){
+                    $import['ReplacementId'] = $tblTimeTableReplacement->getId();
+                    $UpdateList[] = $import;
+                } else {
+                    // Kommt mehr als 1 zurück (array) kann der Ursprung nicht genau ermittelt werden
+                    // Updateliste wird hier nicht ergänzt
+                    // Eintrag bleibt ein import
+                }
+                $import = false;
+            }
+        }
+
+        $ImportList = array_filter($ImportList);
+        // update
+        $this->updateTimetableReplacementJsonBulk($UpdateList);
+        // create
+        return (new Data($this->getBinding()))->createTimetableReplacementJsonBulk($ImportList);
+    }
+
+    /**
+     * @param array $ErrorList
+     * @return bool
+     */
+    public function createTimetableReplacementLog(array $ErrorList):bool
     {
 
-        return (new Data($this->getBinding()))->createTimetableReplacementJsonBulk($ImportList);
+        (new Data($this->getBinding()))->destroyTimetableReplacementLogAllBulk();
+        return (new Data($this->getBinding()))->createTimetableReplacementLog($ErrorList);
+    }
+
+    /**
+     * @param array $UpdateList
+     * required ArrayKeys
+     * [hour]
+     * [room]
+     * [subjectGroup]
+     * [Date]
+     * [IsCanceled]
+     * [tblSubject]
+     * [tblSubstituteSubject]
+     * [tblCourse]
+     * [tblPerson]
+     *
+     * @return bool
+     */
+    public function updateTimetableReplacementJsonBulk($UpdateList):bool
+    {
+
+        return (new Data($this->getBinding()))->updateTimetableReplacementJsonBulk($UpdateList);
     }
 
     /**
