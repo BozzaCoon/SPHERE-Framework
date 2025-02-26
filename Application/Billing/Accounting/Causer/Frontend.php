@@ -336,7 +336,9 @@ class Frontend extends Extension implements IFrontendInterface
         return new TableData($TableContent, null, $TableHead, array(
             'columnDefs' => array(
                 array('type' => Consumer::useService()->getGermanSortBySetting(), 'targets' => 0),
-                array("orderable" => false, "targets" => -1),
+                array("orderable" => false, 'width' => '60px', "targets" => -1),
+                // Extended "Zuordnung Beitragszahler)
+                array("orderable" => false,  "targets" => 2),
             ),
         ));
     }
@@ -354,7 +356,7 @@ class Frontend extends Extension implements IFrontendInterface
                 $item['Time'] = $tblInvoice->getYear().'/'.$tblInvoice->getMonth(true);
                 $item['BasketType'] = '';
                 if(($tblBasket = $tblInvoice->getServiceTblBasket())
-                && ($tblBasketType = $tblBasket->getTblBasketType())){
+                    && ($tblBasketType = $tblBasket->getTblBasketType())){
                     $item['BasketType'] = $tblBasketType->getName();
                 }
                 if(($tblInvoiceItemDebtorList = Invoice::useService()->getInvoiceItemDebtorByInvoice($tblInvoice))){
@@ -463,10 +465,10 @@ class Frontend extends Extension implements IFrontendInterface
 
                 if((Debtor::useService()->getDebtorSelectionByPersonCauserAndItem($tblPerson, $tblItem))){
                     $ColumnList[] = new LayoutColumn(new Panel($tblItem->getName().$notActiveInfo,
-                        ApiDebtorSelection::receiverPanelContent($this->getItemContent($PersonId, $tblItem->getId())
-                            , $tblItem->getId())
-                        , $panelColor)
-                    , 3);
+                            ApiDebtorSelection::receiverPanelContent($this->getItemContent($PersonId, $tblItem->getId())
+                                , $tblItem->getId())
+                            , $panelColor)
+                        , 3);
                 }
             }
             foreach($tblItemList as $tblItem) {
@@ -476,11 +478,11 @@ class Frontend extends Extension implements IFrontendInterface
                 }
                 if(!(Debtor::useService()->getDebtorSelectionByPersonCauserAndItem($tblPerson, $tblItem))){
                     $ColumnHideList[] = new LayoutColumn(new Panel($tblItem->getName(),
-                        ApiDebtorSelection::receiverPanelContent($this->getItemContent($PersonId, $tblItem->getId())
-                            , $tblItem->getId())
-                        , Panel::PANEL_TYPE_DEFAULT)
-                    .'<div style="height: 5px"></div>'
-                    , 3);
+                            ApiDebtorSelection::receiverPanelContent($this->getItemContent($PersonId, $tblItem->getId())
+                                , $tblItem->getId())
+                            , Panel::PANEL_TYPE_DEFAULT)
+                        .'<div style="height: 5px"></div>'
+                        , 3);
                 }
             }
         }

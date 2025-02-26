@@ -1,5 +1,4 @@
 <?php
-
 namespace SPHERE\Application\Billing\Accounting\Debtor;
 
 use SPHERE\Application\Api\Billing\Accounting\ApiBankAccount;
@@ -151,8 +150,8 @@ class Frontend extends Extension implements IFrontendInterface
         }
         // Standard Gruppen Auswahl über Selectbox
         $FormGroupLocked = new Form(new FormGroup(new FormRow(array(
-                new FormColumn(new SelectBox('GroupId[1]', '', array('{{ Name }}' => $leftBoxList)), 10),
-                new FormColumn(new PullRight(new StandardForm('', new GroupIcon())), 2)
+            new FormColumn(new SelectBox('GroupId[1]', '', array('{{ Name }}' => $leftBoxList)), 10),
+            new FormColumn(new PullRight(new StandardForm('', new GroupIcon())), 2)
         ))));
         $tblGroupLockedList[] = Debtor::useService()->directRoute($FormGroupLocked, $GroupId,'left');
         // Individuelle Gruppen Auswahl über Selectbox
@@ -281,7 +280,7 @@ class Frontend extends Extension implements IFrontendInterface
         return new TableData($TableContent, null, $TableHead, array(
             'columnDefs' => array(
                 array('type' => Consumer::useService()->getGermanSortBySetting(), 'targets' => 0),
-                array("orderable" => false, "targets" => -1),
+                array("orderable" => false, 'width' => '24px', "targets" => -1),
             ),
         ));
     }
