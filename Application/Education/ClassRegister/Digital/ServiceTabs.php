@@ -35,6 +35,7 @@ use SPHERE\Common\Frontend\Icon\Repository\Commodity;
 use SPHERE\Common\Frontend\Icon\Repository\CommodityItem;
 use SPHERE\Common\Frontend\Icon\Repository\Download;
 use SPHERE\Common\Frontend\Icon\Repository\Edit;
+use SPHERE\Common\Frontend\Icon\Repository\History;
 use SPHERE\Common\Frontend\Icon\Repository\Holiday;
 use SPHERE\Common\Frontend\Icon\Repository\Hospital;
 use SPHERE\Common\Frontend\Icon\Repository\Info as InfoIcon;
@@ -55,15 +56,14 @@ use SPHERE\Common\Frontend\Table\Repository\Title;
 use SPHERE\Common\Frontend\Table\Structure\TableData;
 use SPHERE\Common\Frontend\Text\Repository\Bold;
 use SPHERE\Common\Frontend\Text\Repository\Center;
-use SPHERE\Common\Frontend\Text\Repository\Danger;
 use SPHERE\Common\Frontend\Text\Repository\Info;
 use SPHERE\Common\Frontend\Text\Repository\Success;
 use SPHERE\Common\Frontend\Text\Repository\ToolTip;
+use SPHERE\Common\Frontend\Text\Repository\Warning;
 use SPHERE\Common\Window\Stage;
-use SPHERE\System\Extension\Repository\Debugger;
 use SPHERE\System\Extension\Repository\Sorter\StringNaturalOrderSorter;
 
-abstract class ServiceTabs extends ServiceCourseContent
+abstract class ServiceTabs extends ServiceForgotten
 {
     /**
      * @param Stage $Stage
@@ -349,6 +349,10 @@ abstract class ServiceTabs extends ServiceCourseContent
             new Listing(), $DivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Lectureship');
         $buttonList[] = $this->getButton('Ferien', '/Education/ClassRegister/Digital/Holiday',
             new Holiday(), $DivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Holiday');
+        if (!$isCourseSystem) {
+            $buttonList[] = $this->getButton('Vergessene AM / HA', '/Education/ClassRegister/Digital/Forgotten',
+                new History(), $DivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Forgotten');
+        }
         $buttonList[] = $this->getButton('Download', '/Education/ClassRegister/Digital/Download',
             new Download(), $DivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Download');
 
@@ -435,6 +439,8 @@ abstract class ServiceTabs extends ServiceCourseContent
 //            $DivisionCourseId, $BackDivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Lectureship');
         $buttonList[] = $this->getButtonCourseSystem('Ferien', '/Education/ClassRegister/Digital/Holiday', new Holiday(),
             $DivisionCourseId, $BackDivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Holiday');
+        $buttonList[] = $this->getButtonCourseSystem('Vergessene AM / HA', '/Education/ClassRegister/Digital/Forgotten', new History(),
+            $DivisionCourseId, $BackDivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Forgotten');
         $buttonList[] = $this->getButtonCourseSystem('Download', '/Education/ClassRegister/Digital/Download', new Download(),
             $DivisionCourseId, $BackDivisionCourseId, $BasicRoute, $Route == '/Education/ClassRegister/Digital/Download');
 
@@ -586,14 +592,15 @@ abstract class ServiceTabs extends ServiceCourseContent
                 $unExcusedDays = Absence::useService()->getUnexcusedDaysByPerson($tblPerson, $tblYear, $tblCompany ?: null, $tblSchoolType ?: null,
                     $fromDate, $tillDate, $unExcusedLessons);
                 $absenceDays = ($excusedDays + $unExcusedDays) . ' (' . new Success($excusedDays) . ', '
-                    . new Danger($unExcusedDays) . ')';
+                    . new Warning($unExcusedDays) . ')';
                 $absenceLessons = ($excusedLessons + $unExcusedLessons) . ' (' . new Success($excusedLessons) . ', '
-                    . new Danger($unExcusedLessons) . ')';
+                    . new Warning($unExcusedLessons) . ')';
 
+                $name = new Bold($tblPerson->getLastFirstNameWithCallNameUnderline(true));
                 $studentTable[] = array(
                     'Number'        => ++$count,
-                    'Name'          => new Bold($tblPerson->getLastFirstNameWithCallNameUnderline()),
-                    'NameSecond'    => new Bold($tblPerson->getLastFirstNameWithCallNameUnderline()),
+                    'Name'          => $name,
+                    'NameSecond'    => $name,
                     'Picture'       => $PersonPicture,
                     'Info'          => $integration . $medicalRecord . $agreement,
                     'Gender'        => $Gender,

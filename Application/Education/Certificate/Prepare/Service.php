@@ -207,6 +207,16 @@ class Service extends ServiceTemplateInformation
     }
 
     /**
+     * @param TblPrepareInformation $tblPrepareInformation
+     *
+     * @return bool
+     */
+    public function destroyPrepareInformation(TblPrepareInformation $tblPrepareInformation): bool
+    {
+        return (new Data($this->getBinding()))->destroyPrepareInformation($tblPrepareInformation);
+    }
+
+    /**
      * @param IFormInterface $Stage
      * @param TblPrepareCertificate $tblPrepare
      * @param $Data
@@ -400,6 +410,10 @@ class Service extends ServiceTemplateInformation
 //                                && method_exists($Certificate, 'selectValuesFoesAbsText')
 //                            ) {
 //                                $value = $Certificate->selectValuesFoesAbsText()[$value];
+                            } elseif ($field == 'InDepthAssignment'
+                                && method_exists($Certificate, 'selectValuesInDepthAssignment')
+                            ) {
+                                $value = $Certificate->selectValuesInDepthAssignment()[$value];
                             }
 
                             // Zeugnistext umwandeln
@@ -554,6 +568,10 @@ class Service extends ServiceTemplateInformation
 //                    && method_exists($Certificate, 'selectValuesFoesAbsText')
 //                ) {
 //                    $value = $Certificate->selectValuesFoesAbsText()[$value];
+                } elseif ($field == 'InDepthAssignment'
+                    && method_exists($Certificate, 'selectValuesInDepthAssignment')
+                ) {
+                    $value = $Certificate->selectValuesInDepthAssignment()[$value];
                 }
 
                 if (($tblPrepareInformation = $this->getPrepareInformationBy($tblPrepare, $tblPerson, $field))) {
@@ -1114,6 +1132,8 @@ class Service extends ServiceTemplateInformation
                             $StudentHasAbsenceLessonsList[$tblPerson->getId()][TblAbsence::VALUE_STATUS_EXCUSED] = true;
                         }
                         if (Absence::useService()->getHasPersonAbsenceLessons($tblPerson, $startDateAbsence, $tillDateAbsence, TblAbsence::VALUE_STATUS_UNEXCUSED)) {
+                            $StudentHasAbsenceLessonsList[$tblPerson->getId()][TblAbsence::VALUE_STATUS_UNEXCUSED] = true;
+                        } elseif (Absence::useService()->getHasPersonAbsenceLessons($tblPerson, $startDateAbsence, $tillDateAbsence, TblAbsence::VALUE_STATUS_UNCLEAR)) {
                             $StudentHasAbsenceLessonsList[$tblPerson->getId()][TblAbsence::VALUE_STATUS_UNEXCUSED] = true;
                         }
                     }

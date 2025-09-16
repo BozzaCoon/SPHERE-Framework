@@ -18,6 +18,7 @@ use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\I
 use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\IDataFESH;
 use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\IDataHGGT;
 use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\IDataHOGA;
+use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\IDataKG;
 use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\IDataLWSZ;
 use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\IDataMLS;
 use SPHERE\Application\Education\Certificate\Generator\Service\DataCertificate\SDataBerufsfachschule;
@@ -234,13 +235,6 @@ class Data extends AbstractData
     {
         $tblConsumer = $this->tblConsumer = Consumer::useService()->getConsumerBySession();
 
-        // Kann nach DB Update wieder entfernt werden
-        if(($tblCertificate = $this->getCertificateByCertificateClassName('MsAbsHs'))){
-            if(!$tblCertificate->isChosenDefault()){
-                $this->updateCertificateIsChosenDefault($tblCertificate, true);
-            }
-        }
-
         if ($tblConsumer && $tblConsumer->getType() == TblConsumer::TYPE_SACHSEN) {
 
             // Informationen der Zeugnisse
@@ -322,6 +316,9 @@ class Data extends AbstractData
             if ($tblConsumer->getAcronym() == 'HGGT') {
                 IDataHGGT::setCertificateIndividually($this);
             }
+            if ($tblConsumer->getAcronym() == 'KG') {
+                IDataKG::setCertificateIndividually($this);
+            }
         }
 
         // Zeugnisvorlagen löschen
@@ -330,6 +327,11 @@ class Data extends AbstractData
         }
         if (($tblCertificate = $this->getCertificateByCertificateClassName('MsAbgLernenHs'))) {
             $this->destroyCertificate($tblCertificate);
+        }
+
+        // Zeugnisvorlagen Nummer ändern
+        if (($tblCertificate = $this->getCertificateByCertificateClassName('MsAbsLernen'))) {
+            $this->updateCertificateNumber($tblCertificate, '3.11');
         }
     }
 

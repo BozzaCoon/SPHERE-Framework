@@ -316,6 +316,10 @@ abstract class ServiceCertificateContent extends ServiceAbitur
                         } elseif ($tblConsumer && $tblConsumer->isConsumer(TblConsumer::TYPE_SACHSEN, 'HGGT')) {
                             $Value = $tblPerson->getFirstSecondName() . ' ' . $tblPrepareInformation->getValue();
                             $Content['P' . $personId]['Input'][$tblPrepareInformation->getField()] = $this->useLetterFontReplacement($Value);
+                            // REF -> KG
+                        } elseif ($tblConsumer && $tblConsumer->isConsumer(TblConsumer::TYPE_SACHSEN, 'KG')) {
+                            $Value = $tblPerson->getFirstSecondName() . ' ' . $tblPrepareInformation->getValue();
+                            $Content['P' . $personId]['Input'][$tblPrepareInformation->getField()] = $this->useLetterFontReplacement($Value);
                         } else {
                             $Value = $tblPerson->getFirstSecondName(). ' ' . $tblPerson->getLastName() . ' ' . $tblPrepareInformation->getValue();
                             $Content['P' . $personId]['Input'][$tblPrepareInformation->getField()] = $this->useLetterFontReplacement($Value);
@@ -632,7 +636,15 @@ abstract class ServiceCertificateContent extends ServiceAbitur
                                 }
                             }
 
-                            $Content['P' . $personId]['Grade']['Data'][$tblSubject->getAcronym()] = $grade;
+                            // OS: Prüfung in Herkunftssprache statt Englisch
+                            $post = '';
+                            if ($tblSubject->getName() == 'Englisch'
+                                && ($tblPrepareInformation = Prepare::useService()->getPrepareInformationBy($tblPrepare, $tblPerson, 'IsNativeLanguage'))
+                                && $tblPrepareInformation->getValue()
+                            ) {
+                                $post = '*';
+                            }
+                            $Content['P' . $personId]['Grade']['Data'][$tblSubject->getAcronym()] = $grade . $post;
                         }
                     }
                 }

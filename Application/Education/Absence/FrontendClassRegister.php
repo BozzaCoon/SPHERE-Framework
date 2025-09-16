@@ -111,7 +111,7 @@ class FrontendClassRegister extends Extension implements IFrontendInterface
                                 new LayoutColumn(array(
                                     new Panel(
                                         'Schüler',
-                                        $tblPerson->getLastFirstNameWithCallNameUnderline(),
+                                        $tblPerson->getLastFirstNameWithCallNameUnderline(true),
                                         Panel::PANEL_TYPE_INFO
                                     )
                                 ), 6),
@@ -187,7 +187,9 @@ class FrontendClassRegister extends Extension implements IFrontendInterface
                 if ($tblAbsence->getStatus() == TblAbsence::VALUE_STATUS_EXCUSED) {
                     $status = new Success('entschuldigt');
                 } elseif ($tblAbsence->getStatus() == TblAbsence::VALUE_STATUS_UNEXCUSED) {
-                    $status = new \SPHERE\Common\Frontend\Text\Repository\Danger('unentschuldigt');
+                    $status = new \SPHERE\Common\Frontend\Text\Repository\Warning('unentschuldigt');
+                } elseif ($tblAbsence->getStatus() == TblAbsence::VALUE_STATUS_UNCLEAR) {
+                    $status = new \SPHERE\Common\Frontend\Text\Repository\Danger('unklar');
                 }
 
                 $isOnlineAbsence = $tblAbsence->getIsOnlineAbsence();

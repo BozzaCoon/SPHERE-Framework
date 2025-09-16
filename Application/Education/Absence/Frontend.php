@@ -2,9 +2,11 @@
 
 namespace SPHERE\Application\Education\Absence;
 
+use DateInterval;
 use DateTime;
 use SPHERE\Application\Api\Education\ClassRegister\ApiAbsence;
 use SPHERE\Application\Education\Absence\Service\Entity\TblAbsence;
+use SPHERE\Application\Education\ClassRegister\Digital\Digital;
 use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourseType;
@@ -18,6 +20,7 @@ use SPHERE\Common\Frontend\Form\Repository\Field\DatePicker;
 use SPHERE\Common\Frontend\Form\Repository\Field\RadioBox;
 use SPHERE\Common\Frontend\Form\Repository\Field\SelectBox;
 use SPHERE\Common\Frontend\Form\Repository\Field\TextField;
+use SPHERE\Common\Frontend\Form\Repository\Title;
 use SPHERE\Common\Frontend\Form\Structure\Form;
 use SPHERE\Common\Frontend\Form\Structure\FormColumn;
 use SPHERE\Common\Frontend\Form\Structure\FormGroup;
@@ -39,6 +42,7 @@ use SPHERE\Common\Frontend\Layout\Structure\Layout;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutColumn;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutGroup;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutRow;
+use SPHERE\Common\Frontend\Link\Repository\AbstractLink;
 use SPHERE\Common\Frontend\Link\Repository\Danger;
 use SPHERE\Common\Frontend\Link\Repository\Link;
 use SPHERE\Common\Frontend\Link\Repository\Primary as PrimaryLink;
@@ -70,19 +74,21 @@ class Frontend extends FrontendClassRegister
 
         $now = new DateTime('now');
 
+        if (Consumer::useService()->getAccountSettingValue("AbsenceViewSekretariat") == 'Week') {
+            $view = $this->LoadOrganizerWeekly($now->format('W') , $now->format('Y'));
+        } else {
+            $view = $this->LoadOrganizerDaily();
+        }
+
         $Stage->setContent(
             (new PrimaryLink(
                 'Fehlzeit hinzufügen',
                 ApiAbsence::getEndpoint(),
                 new PlusSign()
-            ))->ajaxPipelineOnClick(ApiAbsence::pipelineOpenCreateAbsenceModal())
+            ))->ajaxPipelineOnClick(ApiAbsence::pipelineOpenCreateAbsenceModal(null, null, $now->format('d.m.Y')))
             . new Container('&nbsp;')
             . ApiAbsence::receiverModal()
-            . new Panel(
-                new Calendar() . ' Kalender',
-                ApiAbsence::receiverBlock($this->LoadOrganizerWeekly($now->format('W') , $now->format('Y')), 'CalendarWeekContent'),
-                Panel::PANEL_TYPE_PRIMARY
-            )
+            . ApiAbsence::receiverBlock($view, 'CalendarWeekContent')
         );
 
         return $Stage;
@@ -345,7 +351,235 @@ class Frontend extends FrontendClassRegister
             ))
         );
 
-        return $Content . ' ';
+        $link = (new Link('Tagesansicht', ApiAbsence::getEndpoint(), null, array(), false, null, AbstractLink::TYPE_WHITE_LINK))
+            ->ajaxPipelineOnClick(ApiAbsence::pipelineChangeDailyDate('today'));
+
+        return new Panel(
+            new Calendar() . ' Kalender' . new PullRight($link),
+            $Content,
+            Panel::PANEL_TYPE_PRIMARY
+        );
+    }
+
+    /**
+     * @param string $Date
+     *
+     * @return string
+     */
+    public function LoadOrganizerDaily(string $Date = 'today'): string
+    {
+        $currentDate = new DateTime($Date);
+        $nowDate = new DateTime('today');
+        $currentDateString = $currentDate->format('d.m.Y');
+
+        $headerList = array();
+        $bodyList = array();
+
+        $organizerBaseData = $this->convertOrganizerBaseData();
+        $DayName = array(
+            '0' => 'Sonntag',
+            '1' => 'Montag',
+            '2' => 'Dienstag',
+            '3' => 'Mittwoch',
+            '4' => 'Donnerstag',
+            '5' => 'Freitag',
+            '6' => 'Samstag',
+        );
+        $MonthName = $organizerBaseData['monthNameShort'];
+
+        $absenceList = array();
+        $personList = array();
+        if (($tblAbsenceList = Absence::useService()->getAbsenceAllBetween($currentDate, $currentDate))) {
+            foreach ($tblAbsenceList as $tblAbsence) {
+                if (($tblPerson = $tblAbsence->getServiceTblPerson())) {
+                    if (!isset($personList[$tblPerson->getId()])) {
+                        $personList[$tblPerson->getId()] = $tblPerson;
+                    }
+
+                    self::setAbsenceWeekContent($absenceList, $tblPerson, $tblAbsence, $currentDateString);
+                }
+            }
+        }
+
+        if (!empty($personList)) {
+            $personList = $this->getSorter($personList)->sortObjectBy('LastFirstName', new StringGermanOrderSorter());
+            /** @var TblPerson $tblPerson */
+            foreach ($personList as $tblPerson) {
+                $personId = $tblPerson->getId();
+                if (isset($absenceList[$personId])
+                    && ($tblStudentEducation = DivisionCourse::useService()->getStudentEducationByPersonAndDate($tblPerson, $currentDateString))
+                ) {
+                    $tblDivision = $tblStudentEducation->getTblDivision();
+                    $tblCoreGroup = $tblStudentEducation->getTblCoreGroup();
+                    foreach ($absenceList[$personId] as $date => $item) {
+                        if ($tblDivision) {
+                            $dataList[$tblDivision->getId()][$date][$personId] = $item;
+                        }
+                        if ($tblCoreGroup) {
+                            $dataList[$tblCoreGroup->getId()][$date][$personId] = $item;
+                        }
+                    }
+                }
+            }
+        }
+
+        $backgroundColor = '#E0F0FF';
+        $minHeightHeader = '56px';
+        $minHeightBody = '38px';
+        $padding = '3px';
+
+        $headerList['Division'] = (new TableColumn(new Center(new Bold('Kurs'))))
+            ->setBackgroundColor($backgroundColor)
+            ->setVerticalAlign('middle')
+            ->setMinHeight($minHeightHeader)
+            ->setPadding($padding);
+
+        $DayAtWeek = $currentDate->format('w');
+        $Day = (int)$currentDate->format('d');
+
+        $isHoliday = false;
+        // Kalender-Inhalt erzeugen
+        if (($tblYearList = Term::useService()->getYearAllByDate($currentDate))) {
+            foreach ($tblYearList as $tblYear) {
+                $tblDivisionCourseList = array();
+                if (($tempList = DivisionCourse::useService()->getDivisionCourseListBy($tblYear, TblDivisionCourseType::TYPE_DIVISION))) {
+                    $tblDivisionCourseList = array_merge($tblDivisionCourseList, $tempList);
+                }
+                if (($tempList = DivisionCourse::useService()->getDivisionCourseListBy($tblYear, TblDivisionCourseType::TYPE_CORE_GROUP))) {
+                    $tblDivisionCourseList = array_merge($tblDivisionCourseList, $tempList);
+                }
+
+                $tblDivisionCourseList = $this->getSorter($tblDivisionCourseList)->sortObjectBy('DisplayName', new StringNaturalOrderSorter());
+                // Content der je Kurs erstellen
+                /** @var TblDivisionCourse $tblDivisionCourse */
+                foreach ($tblDivisionCourseList as $tblDivisionCourse) {
+                    $hasSaturdayLessons = $tblDivisionCourse->getHasSaturdayLessons();
+                    $tblCompanyList = $tblDivisionCourse->getCompanyListFromStudents();
+
+                    $countStudent = $tblDivisionCourse->getCountStudents();
+                    $bodyList[$tblDivisionCourse->getId()]['Division'] = (new TableColumn(new Center(new Bold($tblDivisionCourse->getName())
+                        . new ToolTip(new Small(' (' .  $countStudent  . ')'), $countStudent . ' Schüler'))))
+                        ->setBackgroundColor($backgroundColor)
+                        ->setVerticalAlign('middle')
+                        ->setMinHeight($minHeightBody)
+                        ->setPadding($padding);
+
+                    if ($hasSaturdayLessons) {
+                        $isWeekend = $DayAtWeek == 0;
+                    } else {
+                        $isWeekend = $DayAtWeek == 0 || $DayAtWeek == 6;
+                    }
+                    $isHoliday = Term::useService()->getHolidayByDayAndCompanyList($tblYear, $currentDate, $tblCompanyList ?: array());
+
+                    if (!isset($headerList['Day' . $Day])) {
+                        $columnHeader = (new TableColumn(new Center('&nbsp;' . new Container('Fehlende Schüler') . new Container('&nbsp;'))))
+                            ->setBackgroundColor($backgroundColor)
+                            ->setMinHeight($minHeightHeader)
+                            ->setPadding($padding);
+
+                        $headerList['Day' . $Day] = $columnHeader;
+                    }
+
+                    if ($isWeekend || $isHoliday) {
+                        $columnBody = (new TableColumn(new Center($isWeekend ? new Muted(new Small('w')) : new Muted(new Small('f')))))
+                            ->setBackgroundColor('lightgrey')
+                            ->setVerticalAlign('middle')
+                            ->setOpacity(0.5);
+                    } else {
+                        $columnBody = new TableColumn(new Center(
+                            isset($dataList[$tblDivisionCourse->getId()][$currentDateString])
+//                                ? implode('<br>', $dataList[$tblDivisionCourse->getId()][$currentDateString])
+                                ? implode('&nbsp;&nbsp;&nbsp;&nbsp;', $dataList[$tblDivisionCourse->getId()][$currentDateString])
+                                : '&nbsp;'
+                        ));
+                    }
+
+                    $bodyList[$tblDivisionCourse->getId()]['Day' . $Day] = $columnBody
+                        ->setMinHeight($minHeightBody)
+                        ->setVerticalAlign('middle')
+                        ->setPadding($padding);
+                }
+            }
+        }
+
+        $tableHead = new TableHead(new TableRow($headerList));
+        $rows = array();
+        foreach ($bodyList as $columnList) {
+            $rows[] = new TableRow($columnList);
+        }
+        $tableBody = new TableBody($rows);
+        $table = new Table($tableHead, $tableBody, null, false, null, 'TableCustom');
+
+        $dayText = new Bold($DayName[$DayAtWeek] . ', den ' . $currentDateString);
+        if ($isHoliday) {
+            $dayText = Digital::useFrontend()->getTextColor($dayText, 'lightgray');
+        } elseif ($currentDate == $nowDate) {
+            $dayText = Digital::useFrontend()->getTextColor($dayText, 'darkorange');
+        }
+
+        $addDays = 1;
+        $subDays = 1;
+        $nextDate = new DateTime($currentDateString);
+        $nextDate = $nextDate->add(new DateInterval('P'. $addDays . 'D'));
+        $previewsDate = new DateTime($currentDateString);
+        $previewsDate = $previewsDate->sub(new DateInterval('P' . $subDays . 'D'));
+
+        // Inhalt zusammenbasteln
+        $Content = new Layout(
+            new LayoutGroup(array(
+                new LayoutRow(
+                    new LayoutColumn(
+                        new Layout(new LayoutGroup(new LayoutRow(array(
+                                new LayoutColumn('&nbsp;', 3),
+                                new LayoutColumn(
+                                    new Center(
+                                        (new Link(new ChevronLeft(), ApiAbsence::getEndpoint(), null, array(),
+                                            $DayName[$previewsDate->format('w')] . ', den ' . $previewsDate->format('d.m.Y')))
+                                            ->ajaxPipelineOnClick(ApiAbsence::pipelineChangeDailyDate($previewsDate->format('d.m.Y')))
+                                    )
+                                    , 1),
+                                new LayoutColumn(
+                                    new Center($dayText)
+                                    , 4),
+                                new LayoutColumn(
+                                    new Center(
+                                        (new Link(new ChevronRight(), ApiAbsence::getEndpoint(), null, array(),
+                                            $DayName[$nextDate->format('w')] . ', den ' . $nextDate->format('d.m.Y')))
+                                            ->ajaxPipelineOnClick(ApiAbsence::pipelineChangeDailyDate($nextDate->format('d.m.Y')))
+                                    )
+                                    , 1),
+                                new LayoutColumn(
+                                    new PullRight((new Link(
+                                        ' Herunterladen',
+                                        '/Api/Reporting/Standard/Person/AbsenceBetweenList/Download',
+                                        new Download(),
+                                        array(
+                                            'StartDate' => $currentDateString,
+                                            'EndDate' => $currentDateString,
+                                        )
+                                    )))
+                                    , 3)
+                            )))
+                        )
+                        . '<div style="height: 5px;"></div>'
+                        , 12)
+                ),
+                new LayoutRow(
+                    new LayoutColumn(
+                        $table
+                    )
+                )
+            ))
+        );
+
+        $link = (new Link('Wochenansicht', ApiAbsence::getEndpoint(), null, array(), false, null, AbstractLink::TYPE_WHITE_LINK))
+            ->ajaxPipelineOnClick(ApiAbsence::pipelineChangeWeek($currentDate->format('W'), $currentDate->format('Y')));
+
+        return new Panel(
+            new Calendar() . ' Kalender' . new PullRight($link),
+            $Content,
+            Panel::PANEL_TYPE_PRIMARY
+        );
     }
 
     /**
@@ -439,15 +673,17 @@ class Frontend extends FrontendClassRegister
     }
 
     /**
-     * @param $AbsenceId
+     * @param null $AbsenceId
      * @param bool $hasSearch
-     * @param $Search
-     * @param $Data
-     * @param $PersonId
-     * @param $DivisionCourseId
+     * @param null $Search
+     * @param null $Data
+     * @param null $PersonId
+     * @param null $DivisionCourseId
      * @param IMessageInterface|null $messageSearch
      * @param IMessageInterface|null $messageLesson
-     * @param $Date
+     * @param null $Date
+     * @param null $IsMassAbsence
+     * @param null $Lesson
      *
      * @return Form
      */
@@ -460,16 +696,26 @@ class Frontend extends FrontendClassRegister
         $DivisionCourseId = null,
         IMessageInterface $messageSearch = null,
         IMessageInterface $messageLesson = null,
-        $Date = null
+        $Date = null,
+        $IsMassAbsence = null,
+        $Lesson = null
     ): Form {
+        $hasStatusUnclear = false;
         if ($Data === null && $AbsenceId === null) {
-            $isFullDay = true;
-
             $global = $this->getGlobal();
-            $global->POST['Data']['IsFullDay'] = $isFullDay;
+            if ($Lesson !== null && $Lesson !== '') {
+                $isFullDay = false;
+                $global->POST['Data']['UE'][$Lesson] = 1;
+            } else {
+                $isFullDay = true;
+                $global->POST['Data']['IsFullDay'] = 1;
+            }
 
             if (($tblSetting = Consumer::useService()->getSetting('Education', 'ClassRegister', 'Absence', 'DefaultStatusForNewAbsence'))) {
                 $status = $tblSetting->getValue();
+                if ($status == TblAbsence::VALUE_STATUS_UNCLEAR) {
+                    $hasStatusUnclear = true;
+                }
             } else {
                 $status = TblAbsence::VALUE_STATUS_UNEXCUSED;
             }
@@ -501,6 +747,10 @@ class Frontend extends FrontendClassRegister
             $global->POST['Data']['IsCertificateRelevant'] = $tblAbsence->getIsCertificateRelevant();
 
             $global->savePost();
+
+            if ($tblAbsence->getStatus() == TblAbsence::VALUE_STATUS_UNCLEAR) {
+                $hasStatusUnclear = true;
+            }
         } else {
             $isFullDay = $Data['IsFullDay'] ?? false;
         }
@@ -510,14 +760,38 @@ class Frontend extends FrontendClassRegister
                 ->ajaxPipelineOnClick(ApiAbsence::pipelineEditAbsenceSave($AbsenceId, $DivisionCourseId));
         } else {
             $saveButton = (new PrimaryLink('Speichern', ApiAbsence::getEndpoint(), new Save()))
-                ->ajaxPipelineOnClick(ApiAbsence::pipelineCreateAbsenceSave($PersonId, $DivisionCourseId, $hasSearch));
+                ->ajaxPipelineOnClick(ApiAbsence::pipelineCreateAbsenceSave($PersonId, $DivisionCourseId, $hasSearch, $IsMassAbsence));
+        }
+
+        $tblDivisionCourse = false;
+        $tblPersonList = false;
+        if ($DivisionCourseId) {
+            $tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId);
+            $tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses();
+        }
+
+        if ($hasStatusUnclear
+            || (($tblSetting = Consumer::useService()->getSetting(
+                'Education', 'ClassRegister', 'Absence', 'HasStatusUnclear'
+            ))
+                && $tblSetting->getValue())
+        ) {
+            $statusList = array(
+                new RadioBox('Data[Status]', 'entschuldigt', TblAbsence::VALUE_STATUS_EXCUSED),
+                new RadioBox('Data[Status]', 'unklar', TblAbsence::VALUE_STATUS_UNCLEAR),
+                new RadioBox('Data[Status]', 'unentschuldigt', TblAbsence::VALUE_STATUS_UNEXCUSED)
+            );
+        } else {
+            $statusList = array(
+                new RadioBox('Data[Status]', 'entschuldigt', TblAbsence::VALUE_STATUS_EXCUSED),
+                new RadioBox('Data[Status]', 'unentschuldigt', TblAbsence::VALUE_STATUS_UNEXCUSED)
+            );
         }
 
         $formRows = array();
-        if (!$PersonId && !$AbsenceId && $DivisionCourseId
-            && ($tblDivisionCourse = DivisionCourse::useService()->getDivisionCourseById($DivisionCourseId))
-            && ($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())
-        ) {
+        if ($IsMassAbsence && $tblDivisionCourse) {
+            // wird unten per ApiReceiver geladen
+        } elseif (!$PersonId && !$AbsenceId && $DivisionCourseId && $tblPersonList) {
             $formRows[] = new FormRow(new FormColumn(
                 (new SelectBox('Data[PersonId]', 'Schüler', array('{{ LastFirstName }}' => $tblPersonList)))
                     ->setRequired()
@@ -541,14 +815,26 @@ class Frontend extends FrontendClassRegister
             ));
         }
 
-        $formRows[] = new FormRow(array(
-            new FormColumn(
-                (new DatePicker('Data[FromDate]', '', 'Datum von', new Calendar()))->setRequired(), 6
-            ),
-            new FormColumn(
-                new DatePicker('Data[ToDate]', '', 'Datum bis', new Calendar()), 6
-            ),
-        ));
+        if ($IsMassAbsence) {
+            $formRows[] = new FormRow(array(
+                new FormColumn(
+                    (new DatePicker('Data[FromDate]', '', 'Datum (Bei der Masseneingabe ist kein Zeitraum möglich)', new Calendar()))
+                        ->setRequired()
+                        ->ajaxPipelineOnChange(ApiAbsence::pipelineLoadAbsenceStudentsContent($DivisionCourseId, $Date))
+                    , 12)
+            ));
+        } else {
+            $formRows[] = new FormRow(array(
+                new FormColumn(
+                    (new DatePicker('Data[FromDate]', '', 'Datum von', new Calendar()))
+                        ->setRequired()
+                    , 6),
+                new FormColumn(
+                    (new DatePicker('Data[ToDate]', '', 'Datum bis', new Calendar()))
+                    , 6),
+            ));
+        }
+
         $formRows[] = new FormRow(array(
             new FormColumn(array(
                 (new CheckBox('Data[IsFullDay]', 'ganztägig', 1))->ajaxPipelineOnClick(ApiAbsence::pipelineLoadLesson()),
@@ -569,10 +855,7 @@ class Frontend extends FrontendClassRegister
             new FormColumn(
                 new Panel(
                     'Status',
-                    array(
-                        new RadioBox('Data[Status]', 'entschuldigt', TblAbsence::VALUE_STATUS_EXCUSED),
-                        new RadioBox('Data[Status]', 'unentschuldigt', TblAbsence::VALUE_STATUS_UNEXCUSED)
-                    ),
+                    $statusList,
                     Panel::PANEL_TYPE_INFO
                 )
             ),
@@ -595,13 +878,77 @@ class Frontend extends FrontendClassRegister
             ))->ajaxPipelineOnClick(ApiAbsence::pipelineOpenDeleteAbsenceModal($AbsenceId, $DivisionCourseId));
         }
 
-        $formRows[] = new FormRow(array(
-            new FormColumn($buttons)
-        ));
-
-        return (new Form(new FormGroup(
+        $formGroups = [];
+        if ($IsMassAbsence && $tblDivisionCourse) {
+            $formGroups[] = new FormGroup(new FormRow(array(
+                new FormColumn(
+                    ApiAbsence::receiverBlock($this->loadAbsenceStudentsContent(
+                        $tblDivisionCourse,
+                        isset($Data['FromDate']) ? new DateTime($Data['FromDate']) : ($Date ? new DateTime($Date) : null),
+                        isset($Data['ToDate']) ? new DateTime($Data['ToDate']) : null,
+                        $messageSearch
+                    ), 'AbsenceStudentsContent'
+                    )
+                )
+            )), new Title('Fehlende Schüler'));
+        }
+        $formGroups[] = new FormGroup(
             $formRows
-        )))->disableSubmitAction();
+        );
+        $formGroups[] = new FormGroup(
+            new FormRow(array(
+                new FormColumn($buttons)
+            ))
+        );
+
+        return (new Form($formGroups))->disableSubmitAction();
+    }
+
+
+    /**
+     * @param TblDivisionCourse $tblDivisionCourse
+     * @param DateTime|null $fromDate
+     * @param DateTime|null $toDate
+     * @param IMessageInterface|null $message
+     *
+     * @return string
+     */
+    public function loadAbsenceStudentsContent(TblDivisionCourse $tblDivisionCourse, DateTime $fromDate = null, DateTime $toDate = null, IMessageInterface $message = null): string
+    {
+        $studentColumns = array();
+        if (($tblPersonList = $tblDivisionCourse->getStudentsWithSubCourses())) {
+            foreach ($tblPersonList as $tblPerson) {
+                // Schüler hat schon ganztägige Fehlzeit an diesem Tag → checkt und disable
+                $hasAbsence = false;
+                if ($fromDate && ($tblAbsenceList = Absence::useService()->getAbsenceAllBetweenByPerson($tblPerson, $fromDate, $toDate))) {
+                    foreach ($tblAbsenceList as $tblAbsence) {
+                        if (!Absence::useService()->getLessonAllByAbsence($tblAbsence)) {
+                            $hasAbsence = true;
+
+                            break;
+                        }
+                    }
+                }
+
+                $checkBox = new CheckBox('Data[Students][' . $tblPerson->getId() . ']', $tblPerson->getLastFirstNameWithCallNameUnderline(), 1);
+                if ($hasAbsence) {
+                    $global = $this->getGlobal();
+                    $global->POST['Data']['Students'][$tblPerson->getId()] = 1;
+                    $global->savePost();
+
+                    $checkBox->setDisabled();
+                }
+                $studentColumns[$tblPerson->getId()] = new LayoutColumn($checkBox, 4);
+            }
+        }
+
+        if ($studentColumns) {
+            return new Layout(new LayoutGroup(new LayoutRow(
+                $studentColumns
+            ))) . $message . new Container('&nbsp;');
+        }
+
+        return new Layout(new LayoutGroup(new LayoutRow(new LayoutColumn('&nbsp;')))) . $message;
     }
 
     /**
