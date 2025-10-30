@@ -11,6 +11,7 @@ use SPHERE\Application\Setting\Consumer\Consumer;
 use SPHERE\Application\Setting\ItsLearning\ItsLearning;
 use SPHERE\Application\Setting\MyAccount\MyAccount;
 use SPHERE\Application\Setting\Univention\Univention;
+use SPHERE\Application\Setting\UniventionTransfer\UniventionTransfer;
 use SPHERE\Application\Setting\User\User;
 use SPHERE\Common\Frontend\Icon\Repository\Cog;
 use SPHERE\Common\Main;
@@ -36,6 +37,7 @@ class Setting implements IClusterInterface
             if(($tblConsumer = $tblAccount->getServiceTblConsumer())){
                 if(ConsumerGatekeeper::useService()->getConsumerLoginByConsumerAndSystem($tblConsumer, TblConsumerLogin::VALUE_SYSTEM_DLLP)){
                     Univention::registerApplication();
+                    UniventionTransfer::registerApplication();
                 }
             }
         }

@@ -15,6 +15,8 @@ use SPHERE\Application\Education\School\Type\Type;
 use SPHERE\Application\People\Group\Group;
 use SPHERE\Application\People\Group\Service\Entity\TblGroup;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
+use SPHERE\Application\People\Relationship\Relationship;
+use SPHERE\Application\People\Relationship\Service\Entity\TblToPerson;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblAccount;
 use SPHERE\Application\Platform\Gatekeeper\Authorization\Account\Service\Entity\TblIdentification;
 use SPHERE\Application\Setting\Authorization\Account\Account;
@@ -23,9 +25,16 @@ use SPHERE\Application\Setting\Consumer\School\School;
 use SPHERE\Application\Setting\Univention\Service\Data;
 use SPHERE\Application\Setting\Univention\Service\Entity\TblUnivention;
 use SPHERE\Application\Setting\Univention\Service\Setup;
+use SPHERE\Application\Setting\UniventionTransfer\Service\Entity\TblUniventionAccount;
+use SPHERE\Application\Setting\UniventionTransfer\UniventionTransfer;
 use SPHERE\Application\Setting\User\Account\Account as AccountUser;
 use SPHERE\Application\Setting\User\Account\Service\Entity\TblUserAccount;
+use SPHERE\Common\Frontend\Form\IFormInterface;
+use SPHERE\Common\Frontend\Message\Repository\Success;
+use SPHERE\Common\Frontend\Text\Repository\TextBackground;
+use SPHERE\Common\Window\Redirect;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Service
@@ -80,49 +89,108 @@ class Service extends AbstractService
     /**
      * @return array|bool|TblAccount
      */
-    public function getAccountAllForAPITransfer()
+    public function getAccountAllForAPITransfer($Type = 'all')
     {
+        $tblAccountList = array();
+        if($Type == 'all'){
+            // Alle Mitarbeiter/Lehrer Account's
+            if(($tblAccountListTemp = Account::useService()->getAccountAllForEdit())){
+                $tblAccountList = $tblAccountListTemp;
+            }
 
-        // Alle Mitarbeiter/Lehrer Account's
-        $tblAccountList = Account::useService()->getAccountAllForEdit();
+            // Student/Custody
+            if ($tblUserAccountList = AccountUser::useService()->getUserAccountAll()){
+                foreach ($tblUserAccountList as $tblUserAccount) {
+                    if (($tblAccount = $tblUserAccount->getServiceTblAccount())){
+                        $tblAccountList[] = $tblAccount;
+                    }
+                }
+            }
+            $tblAccountList = array_unique($tblAccountList);
 
-        // Wenn keine vorhanden sind muss trotzdem ein Array weiter gereicht werden
-        if (!is_array($tblAccountList)){
-            $tblAccountList = array();
         }
 
-        // Student
-        if ($tblUserAccountList = AccountUser::useService()->getUserAccountAllByType(TblUserAccount::VALUE_TYPE_STUDENT)){
-            foreach ($tblUserAccountList as $tblUserAccount) {
-                if ($tblUserAccount->getServiceTblAccount()){
-                    $tblAccountList[] = $tblUserAccount->getServiceTblAccount();
+        if($Type == TblUniventionAccount::VALUE_TEACHER || $Type == TblUniventionAccount::VALUE_STAFF){
+            // Alle Mitarbeiter/Lehrer Account's
+            if(($tblAccountListTemp = Account::useService()->getAccountAllForEdit())){
+                $tblAccountList = $tblAccountListTemp;
+            }
+        }
+
+        if($Type == TblUniventionAccount::VALUE_STUDENT){
+            if ($tblUserAccountList = AccountUser::useService()->getUserAccountAllByType(TblUserAccount::VALUE_TYPE_STUDENT)){
+                foreach ($tblUserAccountList as $tblUserAccount) {
+                    if ($tblUserAccount->getServiceTblAccount()){
+                        $tblAccountList[] = $tblUserAccount->getServiceTblAccount();
+                    }
                 }
             }
         }
-        $tblAccountList = array_unique($tblAccountList);
+
+        if($Type == TblUniventionAccount::VALUE_GUARDIAN){
+            // Lehrer mit Sorgerecht hinzufügen
+            // Alle Mitarbeiter/Lehrer Account's
+            if(($tblAccountListTemp = Account::useService()->getAccountAllForEdit())){
+                foreach($tblAccountListTemp  as $tblAccountTemp){
+                    if(($tblPersonList = Account::useService()->getPersonAllByAccount($tblAccountTemp))){
+                        // es existiert nur eine Person pro Account
+                        if(($tblPerson = current($tblPersonList))){
+                            $tblType = Relationship::useService()->getTypeByName('Sorgeberechtigt');
+                            if(Relationship::useService()->getPersonRelationshipAllByPerson($tblPerson, $tblType)){
+                                $tblAccountList[] = $tblAccountTemp;
+                                continue;
+                            }
+                            $tblType = Relationship::useService()->getTypeByName('Vormund');
+                            if(Relationship::useService()->getPersonRelationshipAllByPerson($tblPerson, $tblType)){
+                                $tblAccountList[] = $tblAccountTemp;
+                                continue;
+                            }
+                            $tblType = Relationship::useService()->getTypeByName('Bevollmächtigt');
+                            if(Relationship::useService()->getPersonRelationshipAllByPerson($tblPerson, $tblType)){
+                                $tblAccountList[] = $tblAccountTemp;
+//                                continue;
+                            }
+
+                        }
+                    }
+                }
+            }
+
+            if ($tblUserAccountList = AccountUser::useService()->getUserAccountAllByType(TblUserAccount::VALUE_TYPE_CUSTODY)){
+                foreach ($tblUserAccountList as $tblUserAccount) {
+                    if ($tblUserAccount->getServiceTblAccount()){
+                        $tblAccountList[] = $tblUserAccount->getServiceTblAccount();
+                    }
+                }
+            }
+            $tblAccountList = array_unique($tblAccountList);
+        }
+
+        usort($tblAccountList, function ($a, $b) {
+            return strcmp($a->getUserName(), $b->getUserName());
+        });
+
         return (!empty($tblAccountList) ? $tblAccountList : false);
     }
 
     /**
      * @param TblYear[] $tblYear
+     * @param string  $Type
      * @param string  $Acronym
      * @param array   $TeacherClasses
      * @param array   $ClassSchoolCodeList
-     * @param array   $schoolList
-     * @param array   $roleList
      *
      * @return array
      */
     public function getAccountActive(
         $tblYearList,
+        $Type,
         $Acronym = '',
         $TeacherClasses = array(),
-        $ClassSchoolCodeList = array(),
-        $schoolList = array(),
-        $roleList = array()
+        $ClassSchoolCodeList = array()
     ) {
 
-        $tblAccountList = Univention::useService()->getAccountAllForAPITransfer();
+        $tblAccountList = Univention::useService()->getAccountAllForAPITransfer($Type);
         $activeAccountList = array();
 
         if($tblAccountList){
@@ -131,27 +199,29 @@ class Service extends AbstractService
                 $Acronym,
                 &$activeAccountList,
                 $TeacherClasses,
-                $ClassSchoolCodeList,
-                $schoolList,
-                $roleList
+                $ClassSchoolCodeList
             ) {
                 // Reihenfolge für Fehleranzeige wichtig
                 $UploadItem['name'] = $tblAccount->getUsername();
+                $UploadItem['role'] = '';
                 $UploadItem['roles'] = array();
                 $UploadItem['school_classes'] = array();
-                $UploadItem['email'] = $tblAccount->getUserAlias();
+                $UploadItem['mail'] = $tblAccount->getUserAlias();
 //                $UploadItem['password'] = $tblAccount->getPassword();
                 $UploadItem['firstname'] = '';
                 $UploadItem['lastname'] = '';
                 $UploadItem['record_uid'] = $tblAccount->getId();
                 $UploadItem['source_uid'] = $Acronym.'-'.$tblAccount->getId();
-                $UploadItem['schools'] = array($schoolList[$Acronym]);
+                $UploadItem['schools'] = array(UniventionTransfer::useService()->getSchoolURL());
                 $UploadItem['recoveryMail'] = $tblAccount->getRecoveryMail();
 //            $UploadItem['password'] = '';// no passwort transfer
                 $UploadItem['school_type'] = '';
-                $UploadItem['groupArray'] = '';
                 // Dienststellenschlüssel
                 $UploadItem['schoolCode'] = '';
+                // Guardian
+                $UploadItem['legal_guardians'] = array();
+                $UploadItem['guardianList'] = array();
+                $UploadItem['legal_wards'] = array();
 
                 $tblDivisionCourse = false;
                 $tblSchoolType = false;
@@ -172,6 +242,36 @@ class Service extends AbstractService
                                     break;
                                 }
                             }
+                        }
+                    }
+                    if(($tblToPersonList = Relationship::useService()->getPersonRelationshipAllByPerson($tblPerson))){
+                        foreach ($tblToPersonList as $tblToPerson) {
+                            if(($tblType = $tblToPerson->getTblType())){
+                                $TypeName = strtolower($tblType->getName());
+                                if($TypeName == 'sorgeberechtigt' || $TypeName == 'vormund' || $TypeName == 'bevollmächtigt'){
+                                    //ToDO legal_wards? (wards)
+                                    if(($tblPersonCustody = $tblToPerson->getServiceTblPersonFrom())){
+                                        // Sorgeberechtigte selber sollen ignoriert werden
+                                        if($tblPerson->getId() !== $tblPersonCustody->getId()) {
+                                            if(($tblAccountPersonList = Account::useService()->getAccountAllByPerson($tblPersonCustody))){
+                                                $tblAccountPerson = current($tblAccountPersonList);
+                                                $userName = $tblAccountPerson->getUsername();
+                                                // dn steht zwar in der Doku, ich erhalte aber eine User URL test diese zurück zu geben.
+//                                                $UploadItem['legal_guardians'][] = 'uid='.$userName.',cn='.$TypeName.',cn=users,ou='.$Acronym.',dc=connexion,dc=evssn,dc=de';
+
+                                                $UploadItem['legal_guardians'][] = UniventionTransfer::useService()->getUserURL($userName);
+                                                $UploadItem['guardianList'][] = $userName;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if(!empty($UniventionUser['legal_guardians'])){
+                            sort($UniventionUser['legal_guardians']);
+                        }
+                        if(!empty($UniventionUser['legal_wards'])){
+                            sort($UniventionUser['legal_wards']);
                         }
                     }
                 }
@@ -214,40 +314,51 @@ class Service extends AbstractService
                     }
                 }
                 // Rollen
-                $tblGroupList = Group::useService()->getGroupAllByPerson($tblPerson);
-                $groups = array();
                 $roles = array();
-                $IsTeacher = $IsStaff = $IsStudent = false;
-                if($tblGroupList){
-                    foreach($tblGroupList as $tblGroup) {
-                        if($tblGroup->getMetaTable() === TblGroup::META_TABLE_STAFF){
-                            // teacher hat Vorrang
-                            if(!isset($roles[0])){
-                                $roles[0] = $roleList['staff'];
-                                $IsStaff = true;
-                            }
-                        }
-                        if($tblGroup->getMetaTable() === TblGroup::META_TABLE_TEACHER){
-                            $roles[0] = $roleList['teacher'];
-                            $IsTeacher = true;
-                        }
-                        if($tblGroup->getMetaTable() === TblGroup::META_TABLE_STUDENT){
-                            $roles[0] = $roleList['student'];
-                            $IsStudent = true;
-                        }
-                        if($tblGroup->isCoreGroup()){
-                            $groups[$tblGroup->getId()] = $tblGroup->getName();
-                        }
-                    }
+                $isTeacher = $isStaff = $isGuardian = $isStudent = false;
+
+
+                $tblGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TEACHER);
+                if(Group::useService()->getMemberByPersonAndGroup($tblPerson, $tblGroup)){
+                    $isTeacher = true;
                 }
-                if($IsStudent && ($IsStaff || $IsTeacher)){
-                    unset($roles[0]);
+                $tblGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STAFF);
+                if(Group::useService()->getMemberByPersonAndGroup($tblPerson, $tblGroup)){
+                    $isStaff = true;
+                }
+                $tblGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STUDENT);
+                if(Group::useService()->getMemberByPersonAndGroup($tblPerson, $tblGroup)){
+                    $isStudent = true;
+                }
+                $tblGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_CUSTODY);
+                if(Group::useService()->getMemberByPersonAndGroup($tblPerson, $tblGroup)){
+                    $isGuardian = true;
+                }
+
+                // Schüler und andere Gruppen schließen sich aus
+                if(!($isStudent && ($isTeacher || $isStaff || $isGuardian))){
+                    if($isTeacher){
+                        $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_TEACHER);
+                    } elseif($isStaff){
+                        $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_STAFF);
+                    }
+                    //ToDO wie sieht das mit der neuen API aus?
+                    if($isGuardian){
+                        //ToDO  Sorgeberechtigte mit mehreren Rollen? (z.B. Lehrer) ? //ToDO Test mit aanderer Rolle
+//                        $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_STAFF);
+                        $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_GUARDIAN);
+                    }
+                    if($isStudent){
+                        $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_STUDENT);
+                    }
                 }
                 if(!empty($roles)){
                     $UploadItem['roles'] = $roles;
-                }
-                if(!empty($groups)){
-                    $UploadItem['groupArray'] = $groups;
+                    foreach($roles as &$role){
+                        $role = baseName($role);
+                    }
+                    rsort($roles);
+                    $UploadItem['role'] = implode(", ", $roles);
                 }
 
                 array_push($activeAccountList, $UploadItem);
@@ -291,7 +402,7 @@ class Service extends AbstractService
                     'school' => (isset($User['school']) ? $User['school'] : ''),
                     'firstname' => (isset($User['firstname']) ? $User['firstname'] : ''),
                     'lastname' => (isset($User['lastname']) ? $User['lastname'] : ''),
-                    'birthday' => (isset($User['birthday']) ? $User['birthday'] : ''),
+//                    'birthday' => (isset($User['birthday']) ? $User['birthday'] : ''),
                     'email' => (isset($User['email']) ? $User['email'] : ''),
                     'roles' => (isset($User['roles']) ? $User['roles'] : array()),
                     'schools' => (isset($User['schools']) ? $User['schools'] : array()),
@@ -310,61 +421,243 @@ class Service extends AbstractService
     }
 
     /**
-     * @param $roleList
-     * @param $schoolList
+     * @param string $YearId
+     * @param string $Type
      *
      * @return array
      */
-    public function getSchulsoftwareUser($roleList, $schoolList, $YearId = '')
+    public function getSchulsoftwareUser($YearId = '', $Type = TblUniventionAccount::VALUE_ALL)
     {
 
         $Acronym = Account::useService()->getMandantAcronym();
         // Lehraufträge
         $TeacherClasses = array();
+        $tblYearList = array();
         if($YearId && ($tblYear = Term::useService()->getYearById($YearId))) {
             $tblYearList[] = $tblYear;
-        } else {
-            $tblYearList = Term::useService()->getYearByNow();
+        } elseif(($tblYearListTemp = Term::useService()->getYearByNow())) {
+            $tblYearList = $tblYearListTemp;
         }
-        if($tblYearList){
-            foreach($tblYearList as $tblYear) {
-                $this->getTeacherClassesByYear($Acronym, $tblYear, $TeacherClasses);
-            }
-            // ArrayKey muss immer eine normale Zählung bei 0 beginnend ohne Lücken erhalten 0,1,2,3...
-            // Key PersonId
-            foreach($TeacherClasses as &$AcronymTemp) {
-                // Key Acronym
-                foreach($AcronymTemp as &$ClassList) {
-                    sort($ClassList);
+
+        // Lehraufträge nur für Lehrer raussuchen
+        // Sorgeberechtigte müssen das auch Auswerten -> darunter sind auch Lehrer möglich
+        if($Type == TblUniventionAccount::VALUE_TEACHER || $Type == TblUniventionAccount::VALUE_ALL || TblUniventionAccount::VALUE_GUARDIAN){
+            if($tblYearList){
+                foreach($tblYearList as $tblYear) {
+                    $this->getTeacherClassesByYear($Acronym, $tblYear, $TeacherClasses);
                 }
-            }
-        }
-        $ClassSchoolCodeList = array();
-        // Klassen Schulschlüssel liste aus Schülern ziehen
-        if(($tblGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STUDENT))
-        && ($tblPersonList = $tblGroup->getPersonList())){
-            foreach($tblPersonList as $tblPerson){
-                if($tblStudentEducation = DivisionCourse::useService()->getStudentEducationByPersonAndDate($tblPerson)) {
-                    // nur Klasse
-                    $tblDivisionCourse = $tblStudentEducation->getTblDivision();
-                    $tblSchoolType = $tblStudentEducation->getServiceTblSchoolType();
-                    $tblCompany = $tblStudentEducation->getServiceTblCompany();
-                    if($tblDivisionCourse && $tblSchoolType && $tblCompany) {
-                        if(($tblSchool = School::useService()->getSchoolByCompanyAndType($tblCompany, $tblSchoolType))) {
-                            $ClassSchoolCodeList[$tblDivisionCourse->getName()][] = $tblSchool->getSchoolCode();
-                        }
+                // ArrayKey muss immer eine normale Zählung bei 0 beginnend ohne Lücken erhalten 0,1,2,3...
+                // Key PersonId
+                foreach($TeacherClasses as &$AcronymTemp) {
+                    // Key Acronym
+                    foreach($AcronymTemp as &$ClassList) {
+                        sort($ClassList);
                     }
                 }
             }
         }
 
-        if(!empty($ClassSchoolCodeList)){
-            foreach($ClassSchoolCodeList as &$ClassCodeList){
-                $ClassCodeList = array_unique($ClassCodeList);
+        $ClassSchoolCodeList = array();
+        // DISCH nur an Schülern oder Lehrern über Lehraufträge
+        if($Type == TblUniventionAccount::VALUE_STUDENT || $Type == TblUniventionAccount::VALUE_TEACHER || $Type == TblUniventionAccount::VALUE_ALL) {
+            // Klassen Schulschlüssel liste aus Schülern ziehen
+            if(($tblGroup = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STUDENT))
+                && ($tblPersonList = $tblGroup->getPersonList())) {
+                foreach ($tblPersonList as $tblPerson) {
+                    if($tblStudentEducation = DivisionCourse::useService()->getStudentEducationByPersonAndDate($tblPerson)) {
+                        // nur Klasse
+                        $tblDivisionCourse = $tblStudentEducation->getTblDivision();
+                        $tblSchoolType = $tblStudentEducation->getServiceTblSchoolType();
+                        $tblCompany = $tblStudentEducation->getServiceTblCompany();
+                        if($tblDivisionCourse && $tblSchoolType && $tblCompany) {
+                            if(($tblSchool = School::useService()->getSchoolByCompanyAndType($tblCompany, $tblSchoolType))) {
+                                $ClassSchoolCodeList[$tblDivisionCourse->getName()][] = $tblSchool->getSchoolCode();
+                            }
+                        }
+                    }
+                }
+            }
+            if(!empty($ClassSchoolCodeList)) {
+                foreach ($ClassSchoolCodeList as &$ClassCodeList) {
+                    $ClassCodeList = array_unique($ClassCodeList);
+                }
             }
         }
 
-        return Univention::useService()->getAccountActive($tblYearList, $Acronym, $TeacherClasses, $ClassSchoolCodeList, $schoolList, $roleList);
+        return Univention::useService()->getAccountActive($tblYearList, $Type, $Acronym, $TeacherClasses, $ClassSchoolCodeList);
+    }
+
+    /**
+     * @param IFormInterface $form
+     * @param null|array $Year
+     *
+     * @return IFormInterface|string
+     */
+    public function transferUserApi(
+        IFormInterface $form, $userIdentifier, $Upload, $YearId, $Role
+    ) {
+
+        /**
+         * Skip to Frontend
+         */
+        if (null === $userIdentifier) {
+            return $form;
+        }
+
+        return new Success('Daten werden übertragen')
+            . new Redirect($this->getRequest()->getUrl(), Redirect::TIMEOUT_SUCCESS, array(
+                'userIdentifier' => $userIdentifier,
+                'Upload' => $Upload,
+                'YearId' => $YearId,
+                'Role' => $Role
+            ));
+    }
+
+    public function getCompareUserList($UserSchulsoftwareList, $UserUniventionList)
+    {
+        // create: AccountActive welche nicht in der API vorhanden sind
+        $createList = [];
+        $cantCreateList = [];
+        // update: Accounts welche vorhanden sind, aber unterschiedliche Werte aufweisen
+        $updateList = [];
+        $cantUpdateList = [];
+        // delete: Accounts, die in der API vorhanden sind, aber nicht in der Schulsoftware
+        $deleteList = [];
+
+        // Vergleich
+        if (!empty($UserSchulsoftwareList)) {
+            foreach ($UserSchulsoftwareList as $AccountActive) {
+                $hasError = Univention::useFrontend()->controlAccount($AccountActive);
+                $existsInUnivention = isset($UserUniventionList[$AccountActive['record_uid']]);
+
+                if (!$existsInUnivention) {
+                    if($hasError){
+                        $cantCreateList[] = $hasError;
+                    } else {
+                        $createList[] = $AccountActive;
+                    }
+                } else {
+                    if($hasError){
+                        $cantUpdateList[] = $hasError;
+                    } else {
+                        $updateList[] = $AccountActive;
+                    }
+                    unset($UserUniventionList[$AccountActive['record_uid']]);
+                }
+            }
+        }
+
+        // Übrig gebliebene Univention-Accounts -> delete
+        if (!empty($UserUniventionList)) {
+            $deleteList = $UserUniventionList;
+        }
+
+        return [$createList, $cantCreateList, $updateList, $cantUpdateList, $deleteList];
+    }
+
+    public function getOkAndUpdateList($updateList, $UserUniventionList, $keyToCompareList)
+    {
+
+        $OkList = array();
+        if (!empty($updateList)) {
+            if(empty($keyToCompareList)){
+                $keyToCompareList = ['firstname', 'lastname', 'email', 'roles', 'school_classes', 'recoveryMail', 'schoolCode'];
+            }
+
+
+            foreach ($updateList as &$AccountActive) {
+                $KelvinActive = $UserUniventionList[$AccountActive['record_uid']] ?? null;
+                $isDifferent = false;
+
+                if ($KelvinActive === null) {
+                    // Kein Vergleich möglich, da Datensatz fehlt
+                    $isDifferent = true;
+                } else {
+                    foreach ($keyToCompareList as $key => $value) {
+                        // Prüfe, ob Key in beiden Arrays existiert
+                        if (!array_key_exists($key, $AccountActive) || !array_key_exists($key, $KelvinActive)) {
+                            $isDifferent = true;
+                            break;
+                        }
+
+                        // Vergleiche Werte (auch verschachtelte Arrays wie "roles" oder "school_classes")
+                        if (is_array($AccountActive[$key]) || is_array($KelvinActive[$key])) {
+                            // Vergleich über sortierte Arrays, um Reihenfolge auszuschließen
+                            $a = $AccountActive[$key];
+                            $b = $KelvinActive[$key];
+                            sort($a);
+                            sort($b);
+                            if ($a !== $b) {
+                                $isDifferent = true;
+                                break;
+                            }
+                        } elseif ($AccountActive[$key] !== $KelvinActive[$key]) {
+                            $isDifferent = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$isDifferent) {
+                    $OkList[] = $AccountActive;
+                    $AccountActive = false;
+//                    unset($AccountActive);
+                }
+            }
+        }
+        $updateList = array_filter($updateList);
+        return array($OkList, $updateList);
+    }
+
+    public function fillCompareRow($CompareRow, $ExistUser, $AccountActive)
+    {
+
+        $CompareRow['User'] = $AccountActive['name'];
+        $CompareRow['DLLP'] = $this->fillCompareColumn($CompareRow['DLLP'], $ExistUser);
+        $CompareRow['SSW'] = $this->fillCompareColumn($CompareRow['SSW'], $AccountActive, $CompareRow['DLLP']);
+//        $CompareRow['SSWCopy'] = $CompareRow['SSW'];
+        return $CompareRow;
+    }
+
+    public function fillOkRow($CompareRow, $AccountActive)
+    {
+
+        $CompareRow['User'] = $AccountActive['name'];
+        $CompareRow['SSW'] = $this->fillCompareColumn($CompareRow['SSW'], $AccountActive);
+        return $CompareRow;
+    }
+
+    private function fillCompareColumn($ColumnRow = array(), $DataInsert = array(), $ColumnCompareRow = array())
+    {
+
+        $Acronym = Account::useService()->getMandantAcronym();
+        foreach($ColumnRow as $Key => &$Value){
+            if(is_array($DataInsert[$Key])){
+                if(isset($DataInsert[$Key][$Acronym])){
+                    $Value = implode(', ', $DataInsert[$Key][$Acronym]);
+                    if(!empty($ColumnCompareRow)){
+                        if($Value != $ColumnCompareRow[$Key]){
+                            $Value = new TextBackground($Value);
+                        }
+                    }
+                } else {
+                    $Value = implode(', ', $DataInsert[$Key]);
+                    if(!empty($ColumnCompareRow)){
+                        if($Value != $ColumnCompareRow[$Key]){
+                            $Value = new TextBackground($Value);
+                        }
+                    }
+                }
+            } else {
+                $Value = $DataInsert[$Key];
+                if(!empty($ColumnCompareRow)){
+                    if($Value != $ColumnCompareRow[$Key]){
+                        $Value = new TextBackground($Value);
+                    }
+                }
+            }
+        }
+        return $ColumnRow;
     }
 
     /**

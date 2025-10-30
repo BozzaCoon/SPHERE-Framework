@@ -75,13 +75,15 @@ class UniventionUser
      * @param array  $roles
      * @param array  $schools
      * @param array  $school_classes
+     * @param array $guardians
+     * @param array $wards
      * @param string $recoveryMail
      * @param string $schoolCode
      *
      * @return string|null
      */
     public function createUser($name = '', $email = '', $firstname = '', $lastname = '', $record_uid = '', $roles = array(),
-        $schools = array(), $school_classes = array(), $recoveryMail = '', $schoolCode = '')
+        $schools = array(), $school_classes = array(), $guardians = array(), $wards = array(), $recoveryMail = '', $schoolCode = '')
     {
         curl_reset($this->curlhandle);
 
@@ -96,6 +98,8 @@ class UniventionUser
             'roles' => $roles,
             'schools' => $schools,
             'school_classes' => $school_classes,
+            'legal_guardians' => $guardians,
+            'legal_wards' => $wards,
             'udm_properties' => array(
                 "PasswordRecoveryEmail" => $recoveryMail?: null,
                 "DllpDienststellenschluessel" => $schoolCode
@@ -218,13 +222,15 @@ class UniventionUser
      * @param array  $roles
      * @param array  $schools
      * @param array  $school_classes
+     * @param array  $legal_guardians
+     * @param array  $legal_wards
      * @param string $recoveryMail
      * @param string $schoolCode
      *
      * @return string|null
      */
     public function updateUser($name = '', $email = '', $firstname = '', $lastname = '', $record_uid = '', $roles = array(),
-        $schools = array(), $school_classes = array(), $recoveryMail = '', $schoolCode = '')
+        $schools = array(), $school_classes = array(), $legal_guardians = array(), $legal_wards = array(), $recoveryMail = '', $schoolCode = '')
     {
         curl_reset($this->curlhandle);
 
@@ -249,6 +255,8 @@ class UniventionUser
             'school' => $school, // one school
             'schools' => $schools, // array school
             'school_classes' => $school_classes,
+            'legal_guardians' => $legal_guardians,
+            'legal_wards' => $legal_wards,
             'udm_properties' => array(
                 "PasswordRecoveryEmail" => $recoveryMail?: null,
                 "DllpDienststellenschluessel" => $schoolCode

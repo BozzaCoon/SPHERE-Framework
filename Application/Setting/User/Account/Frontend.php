@@ -103,15 +103,15 @@ class Frontend extends Extension implements IFrontendInterface
 
 
         $PanelLeft = new Panel('Account-Verteilung', array(
-            (new ProgressBar($countUserAccountStudent * $Ratio, $countUserAccountCustody * $Ratio, $Empty, 10))
-                ->setColor(ProgressBar::BAR_COLOR_SUCCESS, ProgressBar::BAR_COLOR_INFO, ProgressBar::BAR_COLOR_WARNING),
+            (new ProgressBar($countUserAccountStudent * $Ratio, $Empty, $countUserAccountCustody * $Ratio, 10))
+                ->setColor(ProgressBar::BAR_COLOR_SUCCESS, ProgressBar::BAR_COLOR_INFO, ProgressBar::BAR_COLOR_INFO),
             'Anzahl der Schüler-Accounts: '.$countUserAccountStudent.'<span style="width: 40px; float: left; padding: 3px">'.
             (new ProgressBar(100, 0, 0, 10))
                 ->setColor(ProgressBar::BAR_COLOR_SUCCESS, ProgressBar::BAR_COLOR_INFO, ProgressBar::BAR_COLOR_WARNING)
             .'</span>',
             'Anzahl der Sorgeberechtigten-Accounts: '.$countUserAccountCustody.'<span style="width: 40px; float: left; padding: 3px">'.
-            (new ProgressBar(0, 100, 0, 10))
-                ->setColor(ProgressBar::BAR_COLOR_SUCCESS, ProgressBar::BAR_COLOR_INFO, ProgressBar::BAR_COLOR_WARNING)
+            (new ProgressBar(0, 0, 100, 10))
+                ->setColor(ProgressBar::BAR_COLOR_SUCCESS, ProgressBar::BAR_COLOR_INFO, ProgressBar::BAR_COLOR_INFO)
             .'</span>',
         ));
 

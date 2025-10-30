@@ -30,8 +30,18 @@ class Univention implements IApplicationInterface, IModuleInterface
         Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/Csv'),
             new Link\Name('DLLP über CSV'), new Link\Icon(new Publicly())
         ));
-        Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/Api'),
-            new Link\Name('DLLP über API'), new Link\Icon(new Publicly())
+//        Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/Api'),
+//            new Link\Name('DLLP über API'), new Link\Icon(new Publicly())
+//        ));
+
+        Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/ApiTeacherStaff'),
+            new Link\Name('API Lehrer'), new Link\Icon(new Publicly())
+        ));
+        Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/ApiGuardian'),
+            new Link\Name('API Eltern'), new Link\Icon(new Publicly())
+        ));
+        Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/ApiStudent'),
+            new Link\Name('API Schüler'), new Link\Icon(new Publicly())
         ));
         Main::getDisplay()->addModuleNavigation(new Link(new Link\Route(__NAMESPACE__.'/WorkGroupApi'),
             new Link\Name('DLLP API Arbeitsgruppen'), new Link\Icon(new Publicly())
@@ -42,10 +52,25 @@ class Univention implements IApplicationInterface, IModuleInterface
             __NAMESPACE__, __NAMESPACE__.'/Frontend::frontendUnivention'
         ));
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
-            __NAMESPACE__.'/Csv', __NAMESPACE__.'/Frontend::frontendUnivCSV'
+            __NAMESPACE__.'/Load', __NAMESPACE__.'/Frontend::frontendUniventionLoad'
         ));
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
-            __NAMESPACE__.'/Api', __NAMESPACE__.'/Frontend::frontendUnivAPI'
+            __NAMESPACE__.'/Csv', __NAMESPACE__.'/Frontend::frontendUnivCSV'
+        ));
+//        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+//            __NAMESPACE__.'/Api', __NAMESPACE__.'/Frontend::frontendUnivAPI'
+//        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/ApiUserSelect', __NAMESPACE__.'/Frontend::frontendUserSelectAPI'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/ApiGuardian', __NAMESPACE__.'/Frontend::frontendUniventionGuardian'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/ApiStudent', __NAMESPACE__.'/Frontend::frontendUniventionStudent'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/ApiTeacherStaff', __NAMESPACE__.'/Frontend::frontendUniventionTeacher'
         ));
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/WorkGroupApi', __NAMESPACE__.'/Frontend::frontendWorkGroupAPI'

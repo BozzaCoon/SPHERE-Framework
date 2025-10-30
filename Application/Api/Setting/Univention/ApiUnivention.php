@@ -5,6 +5,7 @@ use SPHERE\Application\Api\ApiTrait;
 use SPHERE\Application\Api\Dispatcher;
 use SPHERE\Application\IApiInterface;
 use SPHERE\Application\Setting\Univention\UniventionUser;
+use SPHERE\Application\Setting\UniventionTransfer\UniventionTransfer;
 use SPHERE\Common\Frontend\Ajax\Emitter\ServerEmitter;
 use SPHERE\Common\Frontend\Ajax\Pipeline;
 use SPHERE\Common\Frontend\Ajax\Receiver\BlockReceiver;
@@ -161,9 +162,18 @@ class ApiUnivention implements IApiInterface
                 if(!isset($User['school_classes'])){
                     $User['school_classes'] = array();
                 }
-                $Error = (new UniventionUser())->createUser($User['name'], $User['email'],
+
+                // Rollenforrang (Lehrer sollen als Lehrer und nicht als Sorgeberechtigte initialisiert werden
+                if(!empty($User['roles'])){
+                    // teacher
+                    //
+                    rsort($User['roles']);
+                }
+
+                $Error = (new UniventionUser())->createUser($User['name'], $User['mail'],
                     $User['firstname'], $User['lastname'], $User['record_uid'],
                     $User['roles'], $User['schools'], $User['school_classes'],
+                    $User['legal_guardians'], $User['legal_wards'],
                     $User['recoveryMail'], $User['schoolCode']);
                 if($Error){
                     $UserString = new Panel($User['name'].' '.new Small(new Muted('('.$User['firstname'].' '.$User['lastname'].')')),
@@ -180,9 +190,10 @@ class ApiUnivention implements IApiInterface
                 if(!isset($User['school_classes'])){
                     $User['school_classes'] = array();
                 }
-                $Error = (new UniventionUser())->updateUser($User['name'], $User['email'],
+                $Error = (new UniventionUser())->updateUser($User['name'], $User['mail'],
                     $User['firstname'], $User['lastname'], $User['record_uid'],
                     $User['roles'], $User['schools'], $User['school_classes'],
+                    $User['legal_guardians'], $User['legal_wards'],
                     $User['recoveryMail'], $User['schoolCode']);
 //                $Error .= '<pre>'.print_r($User, true).'</pre>';
                 if($Error){
@@ -213,7 +224,8 @@ class ApiUnivention implements IApiInterface
                 .self::pipelineServiceUser($Identifier, $UserList, $ApiType, $CountMax);
 //                .self::receiverUser(self::pipelineServiceUser($Identifier, $UserList, $ApiType, $CountMax), $Identifier);
         }
-        return '';
+        // nachladen des aktuellen Standes KelvinAPI
+        return ''.UniventionTransfer::useService()->createIndiwareStudentSubjectOrderBulk();
     }
 
 }
