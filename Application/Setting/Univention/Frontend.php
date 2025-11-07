@@ -90,8 +90,35 @@ class Frontend extends Extension implements IFrontendInterface
     {
         $Stage = new Stage('DLLP', '');
 
+        // dynamsiche Rollenliste
+        $roleList = (new UniventionRole())->getAllRoles();
+        // Fehlerausgabe
+        if(Univention::useFrontend()->errorScan($Stage, $roleList)){
+            return $Stage;
+        }
+        // dynamsiche Schulliste
+        $schoolList = (new UniventionSchool())->getAllSchools();
+        // Fehlerausgabe
+        if($this->errorScan($Stage, $schoolList)){
+            return $Stage;
+        }
+
+        // early break if no answer
+        if(!is_array($roleList) || !is_array($schoolList)){
+            $Stage->setContent(new Warning('DLLP liefert keine Informationen'));
+            return $Stage;
+        }
+        $Acronym = Account::useService()->getMandantAcronym();
+        // Mandant ist nicht in der Schulliste
+        if( !array_key_exists($Acronym, $schoolList)){
+//                if(!in_array($Acronym, $excludeList)){
+            $Stage->setContent(new Warning('Ihr Schulträger ist noch nicht in DLLP freigeschalten'));
+            return $Stage;
+        }
+
         $isReloadAnnouncement = true;
         $CreateString = 'noch nie';
+        $isautoload = true;
         if(($tblUniventionAccount = UniventionTransfer::useService()->getUniventionAccount())){
             $CreateDate = $tblUniventionAccount->getEntityCreate();
             $CreateString = $CreateDate->format('d.m.Y H:i:s');
