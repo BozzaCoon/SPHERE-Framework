@@ -323,9 +323,10 @@ class Frontend extends Extension implements IFrontendInterface
         $tblYearList = Term::useService()->getYearByNow();
         if($tblYearList){
             $UserSchulsoftwareList = Univention::useService()->getSchulsoftwareUser($YearId, TblUniventionAccount::VALUE_TEACHER);
+            if($UserSchulsoftwareList){
+                $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
+            }
         }
-
-        $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
 
         // Prüfung der Accounts (was soll mit welchem Account gemacht werden)
         list($createList, $cantCreateList, $deepSearchList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
@@ -469,6 +470,18 @@ class Frontend extends Extension implements IFrontendInterface
             , false
         );
 
+        if($count['create'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonCreate->setDisabled();
+        }
+        if($count['update'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonUpdate->setDisabled();
+        }
+        if($count['delete'] == 0){
+            /** @var $ButtonUpdate Danger */
+            $ButtonDelete->setDisabled();
+        }
 
         $Stage->setContent(new Layout(new LayoutGroup(array(
             new LayoutRow(array(
@@ -564,9 +577,10 @@ class Frontend extends Extension implements IFrontendInterface
         $tblYearList = Term::useService()->getYearByNow();
         if($tblYearList){
             $UserSchulsoftwareList = Univention::useService()->getSchulsoftwareUser($YearId, TblUniventionAccount::VALUE_GUARDIAN);
+            if($UserSchulsoftwareList){
+                $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
+            }
         }
-
-        $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
 
         // Prüfung der Accounts (was soll mit welchem Account gemacht werden)
         list($createList, $cantCreateList, $deepSearchList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
@@ -711,6 +725,18 @@ class Frontend extends Extension implements IFrontendInterface
             , false
         );
 
+        if($count['create'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonCreate->setDisabled();
+        }
+        if($count['update'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonUpdate->setDisabled();
+        }
+        if($count['delete'] == 0){
+            /** @var $ButtonUpdate Danger */
+            $ButtonDelete->setDisabled();
+        }
 
         $Stage->setContent(new Layout(new LayoutGroup(array(
             new LayoutRow(array(
@@ -805,9 +831,10 @@ class Frontend extends Extension implements IFrontendInterface
         $tblYearList = Term::useService()->getYearByNow();
         if($tblYearList){
             $UserSchulsoftwareList = Univention::useService()->getSchulsoftwareUser($YearId, TblUniventionAccount::VALUE_STUDENT);
+            if($UserSchulsoftwareList){
+                $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
+            }
         }
-
-        $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
 
         // Prüfung der Accounts (was soll mit welchem Account gemacht werden)
         list($createList, $cantCreateList, $deepSearchList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
@@ -952,6 +979,18 @@ class Frontend extends Extension implements IFrontendInterface
             , false
         );
 
+        if($count['create'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonCreate->setDisabled();
+        }
+        if($count['update'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonUpdate->setDisabled();
+        }
+        if($count['delete'] == 0){
+            /** @var $ButtonUpdate Danger */
+            $ButtonDelete->setDisabled();
+        }
 
         $Stage->setContent(new Layout(new LayoutGroup(array(
             new LayoutRow(array(
@@ -1054,6 +1093,13 @@ class Frontend extends Extension implements IFrontendInterface
 
             $label = $labels[$key] ?? ucfirst($key) . ':';
 
+            if($labels[$key] == 'Rolle:'){
+                $compareData[$key] = str_replace('student', 'Schüler', $compareData[$key]);
+                $compareData[$key] = str_replace('teacher', 'Lehrer', $compareData[$key]);
+                $compareData[$key] = str_replace('staff', 'Mitarbeiter', $compareData[$key]);
+                $compareData[$key] = str_replace('legal_guardian', 'Sorgeberechtigter', $compareData[$key]);
+            }
+
             $rows[] = new LayoutRow(array(
                 new LayoutColumn(new Bold($label), $firstWith),
                 new LayoutColumn($compareData[$key], $secondWith),
@@ -1092,23 +1138,29 @@ class Frontend extends Extension implements IFrontendInterface
     {
 
         $SiteType = '';
+        $SaveButtonName = '';
         switch ($Upload) {
             case 'Create':
                 $SiteType = 'erstellen';
+                $SaveButtonName = 'Benutzer anlegen';
                 break;
             case 'Update':
                 $SiteType = 'aktualisieren';
+                $SaveButtonName = 'Benutzer anpassen';
                 break;
             case 'Delete':
                 $SiteType = 'löschen';
+                $SaveButtonName = 'Benutzer löschen';
                 break;
         }
 
         $Stage = new Stage('Benutzerauswahl',$SiteType);
         $Route = '/Setting/Univention';
+        $showGuardian = false;
         switch ($Role) {
             case TblUniventionAccount::VALUE_STUDENT:
                 $Route = '/Setting/Univention/ApiStudent';
+                $showGuardian = true;
                 break;
             case TblUniventionAccount::VALUE_TEACHER:
                 $Route = '/Setting/Univention/ApiTeacherStaff';
@@ -1123,8 +1175,11 @@ class Frontend extends Extension implements IFrontendInterface
         $UserSchulsoftwareList = array();
         $Service = UniventionTransfer::useService();
         $tblUniventionAccountList = array();
-        // role do the trick -> teacher also get stuff
-        if(($tblUniventionAccountListTemp = $Service->getUniventionAccountListByRole($Role))){
+        if($Role == TblUniventionAccount::VALUE_TEACHER) {
+            if(($tblUniventionAccountListTemp = $Service->getUniventionAccountListTeacherAndStuff())){
+                $tblUniventionAccountList = array_merge($tblUniventionAccountList, $tblUniventionAccountListTemp);
+            }
+        } elseif(($tblUniventionAccountListTemp = $Service->getUniventionAccountListByRoleLike($Role))){
             $tblUniventionAccountList = array_merge($tblUniventionAccountList, $tblUniventionAccountListTemp);
         }
 
@@ -1137,9 +1192,35 @@ class Frontend extends Extension implements IFrontendInterface
         $tblYearList = Term::useService()->getYearByNow();
         if($tblYearList){
             $UserSchulsoftwareList = Univention::useService()->getSchulsoftwareUser($YearId, $Role);
+            if($UserSchulsoftwareList){
+                $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
+            }
         }
         // Prüfung der Accounts (was soll mit welchem Account gemacht werden)
-        list($createList, $cantCreateList, $updateList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
+        list($createList, $cantCreateList, $deepSearchList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
+        if($Upload == 'Update'){
+            // Einstellen welche Felder verglichen werden sollen:
+            $keyToCompareList = array(
+                'firstname' => '',
+                'lastname' => '',
+                'mail' => '',
+                'role' => '',
+//            'schools' => '',
+                'school_classes' => '',
+                'recoveryMail' => '',
+                'schoolCode' => '',
+//            'guardians' => '',
+//            'guardianList' => '',
+            );
+
+            if($showGuardian){
+                $keyToCompareList['guardianList'] = '';
+            }
+
+
+            list($OkList, $updateList) = Univention::useService()->getOkAndUpdateList($deepSearchList, $UserUniventionList, $keyToCompareList);
+        }
+
         switch($Upload) {
             case 'Create':
                 $userList = $createList;
@@ -1165,7 +1246,7 @@ class Frontend extends Extension implements IFrontendInterface
                     $user['name'].' - '.$user['firstname'].' '.$user['lastname'],
                     $user['record_uid']))->setChecked(), 4);
             }
-            $form = new Form(new FormGroup(new FormRow($CheckboxList)), new PrimaryForm('Speichern', new Save()));
+            $form = new Form(new FormGroup(new FormRow($CheckboxList)), new PrimaryForm($SaveButtonName, new Save()));
             $ToggleButton = new ToggleCheckbox('Alle auswählen/abwählen', $form);
             $Stage->setContent(
                 new Layout(new LayoutGroup(new LayoutRow(array(
@@ -1660,9 +1741,9 @@ class Frontend extends Extension implements IFrontendInterface
                             if(!empty($Value)){
                                 foreach($Value as $UserName){
                                     if(!(UniventionTransfer::useService()->getUniventionAccountByName($UserName))){
-                                        $KeyReplace = 'Sorgeberechtigte (liste):';
-                                        $MouseOver = (new ToolTip($UserName. new InfoIcon(), htmlspecialchars(
-                                            'Benutzer noch nicht in DLLP ')))->enableHtml();
+//                                        $KeyReplace = 'Sorgeberechtigte (liste):';
+//                                        $MouseOver = (new ToolTip($UserName. new InfoIcon(), htmlspecialchars(
+//                                            'Benutzer noch nicht in DLLP ')))->enableHtml();
                                     }
                                 }
                             }
@@ -1691,7 +1772,7 @@ class Frontend extends Extension implements IFrontendInterface
                     if(empty($Value)){
                         // Ausnahmen die keine Fehler leer keine Fehler erzeugen
                         if($Key != 'legal_guardians' && $Key != 'guardianList' && $Key != 'legal_wards'){
-                            $ErrorLog[] = ($KeyReplace ? : $Key).' '.new DangerText('nicht vorhanden!').$MouseOver;
+                            $ErrorLog[] = ($KeyReplace ? : $Key).' '.new DangerText('nicht vorhanden! ').$MouseOver;
                         }
                     }
 

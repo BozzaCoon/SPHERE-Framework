@@ -256,9 +256,11 @@ class Service extends AbstractService
                                                 $userName = $tblAccountPerson->getUsername();
                                                 // dn steht zwar in der Doku, ich erhalte aber eine User URL test diese zurück zu geben.
 //                                                $UploadItem['legal_guardians'][] = 'uid='.$userName.',cn='.$TypeName.',cn=users,ou='.$Acronym.',dc=connexion,dc=evssn,dc=de';
-
-                                                $UploadItem['legal_guardians'][] = UniventionTransfer::useService()->getUserURL($userName);
-                                                $UploadItem['guardianList'][] = $userName;
+                                                // nur Sorgeberechtigte, wenn diese im DLLP vorhanden sind
+                                                if((UniventionTransfer::useService()->getUniventionAccountByName($userName))){
+                                                    $UploadItem['legal_guardians'][] = UniventionTransfer::useService()->getUserURL($userName);
+                                                    $UploadItem['guardianList'][] = $userName;
+                                                }
                                             }
                                         }
                                     }

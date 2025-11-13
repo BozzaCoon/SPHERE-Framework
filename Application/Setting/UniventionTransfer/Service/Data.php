@@ -61,8 +61,10 @@ class Data extends AbstractData
 
         $queryBuilder->select('tUA')
             ->from(__NAMESPACE__ . '\Entity\TblUniventionAccount', 'tUA')
-            ->where($queryBuilder->expr()->like('tUA.Role', '?1'));
+            ->where($queryBuilder->expr()->like('tUA.Role', '?1'))
+            ->andWhere($queryBuilder->expr()->like('tUA.DllpServiceAccount', '?2'));
         $queryBuilder->setParameter(1, '%' . $Role . '%');
+        $queryBuilder->setParameter(2, '0');
 
         $query = $queryBuilder->getQuery();
         return $query->getResult();
