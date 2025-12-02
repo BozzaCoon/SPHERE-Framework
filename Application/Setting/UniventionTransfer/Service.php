@@ -159,8 +159,9 @@ class Service extends AbstractService
 //                'DllpServiceAccount' => $tblUniventionAccount->getDllpServiceAccount(),
                 'schoolCode' => $tblUniventionAccount->getDllpDISCH(),
                 'guardians' => $tblUniventionAccount->getGuardians(),
-                'guardianList' => $tblUniventionAccount->getGuardianAccountNameList(), //ToDO Liste anpassen
+                'guardianList' => $tblUniventionAccount->getGuardianAccountNameList(),
                 'wards' => $tblUniventionAccount->getWards(),
+                'wardList' => $tblUniventionAccount->getWardAccountNameList(),
 
 //                'udm_properties' => array(
 //                    'e-mail' => array($tblUniventionAccount->getMail()),

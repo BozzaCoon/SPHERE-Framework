@@ -47,7 +47,6 @@ class TblUniventionAccount extends Element
     protected $Schools;          // JSON
     /** @Column(type="string") */
     protected $Workgroups;
-    //ToDO Umbenennen
     /** @Column(type="string") */
     protected $Guardians;
     /** @Column(type="string") */
@@ -278,6 +277,23 @@ class TblUniventionAccount extends Element
     {
         // JSON in Array umwandeln
         return json_decode($this->Wards, true);
+    }
+
+    /**
+     * @return string
+     */
+    public function getWardAccountNameList()
+    {
+        // JSON in Array umwandeln
+        $WardList = json_decode($this->Wards, true);
+        if($WardList && !empty($WardList)){
+            foreach($WardList as &$Ward){
+                // URL von der Kelvin REST API
+                $Ward = basename($Ward); // lastPart
+            }
+        }
+
+        return $WardList;
     }
 
     /**

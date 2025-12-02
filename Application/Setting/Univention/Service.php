@@ -197,7 +197,8 @@ class Service extends AbstractService
                 $Acronym,
                 &$activeAccountList,
                 $TeacherClasses,
-                $ClassSchoolCodeList
+                $ClassSchoolCodeList,
+                $Type
             ) {
                 // Reihenfolge für Fehleranzeige wichtig
                 $UploadItem['name'] = $tblAccount->getUsername();
@@ -220,6 +221,7 @@ class Service extends AbstractService
                 $UploadItem['legal_guardians'] = array();
                 $UploadItem['guardianList'] = array();
                 $UploadItem['legal_wards'] = array();
+                $UploadItem['wardList'] = array();
 
                 $tblDivisionCourse = false;
                 $tblSchoolType = false;
@@ -246,20 +248,45 @@ class Service extends AbstractService
                         foreach ($tblToPersonList as $tblToPerson) {
                             if(($tblType = $tblToPerson->getTblType())){
                                 $TypeName = strtolower($tblType->getName());
-                                if($TypeName == 'sorgeberechtigt' || $TypeName == 'vormund' || $TypeName == 'bevollmächtigt'){
-                                    //ToDO legal_wards? (wards)
-                                    if(($tblPersonCustody = $tblToPerson->getServiceTblPersonFrom())){
-                                        // Sorgeberechtigte selber sollen ignoriert werden
-                                        if($tblPerson->getId() !== $tblPersonCustody->getId()) {
-                                            if(($tblAccountPersonList = Account::useService()->getAccountAllByPerson($tblPersonCustody))){
-                                                $tblAccountPerson = current($tblAccountPersonList);
-                                                $userName = $tblAccountPerson->getUsername();
-                                                // dn steht zwar in der Doku, ich erhalte aber eine User URL test diese zurück zu geben.
+                                // Sorgeberechtigte
+                                // legal_wards können nur Sorgeberechtigte erhalten sonst API Fehler (Lehrer erhalten Kinder also nur über den Sorgeberechtigten import)
+                                if($Type == TblUserAccount::VALUE_TYPE_STUDENT){
+                                    if($TypeName == 'sorgeberechtigt' || $TypeName == 'vormund' || $TypeName == 'bevollmächtigt'){
+                                        if(($tblPersonCustody = $tblToPerson->getServiceTblPersonFrom())){
+                                            // Sorgeberechtigte selber sollen ignoriert werden
+                                            if($tblPerson->getId() !== $tblPersonCustody->getId()) {
+                                                if(($tblAccountPersonList = Account::useService()->getAccountAllByPerson($tblPersonCustody))){
+                                                    $tblAccountPerson = current($tblAccountPersonList);
+                                                    $userName = $tblAccountPerson->getUsername();
+                                                    // dn steht zwar in der Doku, ich erhalte aber eine User URL test diese zurück zu geben.
 //                                                $UploadItem['legal_guardians'][] = 'uid='.$userName.',cn='.$TypeName.',cn=users,ou='.$Acronym.',dc=connexion,dc=evssn,dc=de';
-                                                // nur Sorgeberechtigte, wenn diese im DLLP vorhanden sind
-                                                if((UniventionTransfer::useService()->getUniventionAccountByName($userName))){
-                                                    $UploadItem['legal_guardians'][] = UniventionTransfer::useService()->getUserURL($userName);
-                                                    $UploadItem['guardianList'][] = $userName;
+                                                    // nur Sorgeberechtigte, wenn diese im DLLP vorhanden sind
+                                                    if((UniventionTransfer::useService()->getUniventionAccountByName($userName))){
+                                                        $UploadItem['legal_guardians'][] = UniventionTransfer::useService()->getUserURL($userName);
+                                                        $UploadItem['guardianList'][] = $userName;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                // Kinder
+                                // legal_guardians können nur Schüler erhalten sonst API Fehler
+                                if($Type == TblUserAccount::VALUE_TYPE_STUDENT){
+                                    if($TypeName == 'sorgeberechtigt' || $TypeName == 'vormund' || $TypeName == 'bevollmächtigt'){
+                                        if(($tblPersonStudent = $tblToPerson->getServiceTblPersonTo())){
+                                            // Sorgeberechtigte selber sollen ignoriert werden
+                                            if($tblPerson->getId() !== $tblPersonStudent->getId()) {
+                                                if(($tblAccountPersonList = Account::useService()->getAccountAllByPerson($tblPersonStudent))){
+                                                    $tblAccountPerson = current($tblAccountPersonList);
+                                                    $userName = $tblAccountPerson->getUsername();
+                                                    // dn steht zwar in der Doku, ich erhalte aber eine User URL test diese zurück zu geben.
+//                                                $UploadItem['legal_guardians'][] = 'uid='.$userName.',cn='.$TypeName.',cn=users,ou='.$Acronym.',dc=connexion,dc=evssn,dc=de';
+                                                    // nur Sorgeberechtigte, wenn diese im DLLP vorhanden sind
+                                                    if((UniventionTransfer::useService()->getUniventionAccountByName($userName))){
+                                                        $UploadItem['legal_wards'][] = UniventionTransfer::useService()->getUserURL($userName);
+                                                        $UploadItem['wardList'][] = $userName;
+                                                    }
                                                 }
                                             }
                                         }
@@ -342,10 +369,7 @@ class Service extends AbstractService
                     } elseif($isStaff){
                         $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_STAFF);
                     }
-                    //ToDO wie sieht das mit der neuen API aus?
                     if($isGuardian){
-                        //ToDO  Sorgeberechtigte mit mehreren Rollen? (z.B. Lehrer) ? //ToDO Test mit aanderer Rolle
-//                        $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_STAFF);
                         $roles[] = UniventionTransfer::useService()->getRoleURL(TblUniventionAccount::VALUE_GUARDIAN);
                     }
                     if($isStudent){

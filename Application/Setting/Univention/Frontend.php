@@ -372,7 +372,265 @@ class Frontend extends Extension implements IFrontendInterface
                 'User' => $AccountActive['name'],
                 'SSW' => $keyToCompareList,
             );
-            $OkRow = Univention::useService()->fillOkRow($OkRow, $AccountActive, $keyToCompareList);
+            $OkRow = Univention::useService()->fillOkRow($OkRow, $AccountActive); // , $keyToCompareList
+            $OkRow = $this->getOkLayout($OkRow, $keyToCompareList);
+            $OkTable[] = $OkRow;
+        }
+
+        // Frontend Anzeige
+        $ContentCreate = array();
+//        $ContentUpdate = array();
+        $ContentDelete = array();
+        if(!empty($createList)){
+            foreach($createList as $AccountArray) {
+                $ContentCreate[] = $AccountArray['name'].' - '.$AccountArray['firstname'].' '.$AccountArray['lastname'];
+            }
+        }
+        if(!empty($updateList)){
+            foreach($updateList as $AccountArray) {
+                if(isset($AccountArray['UpdateLog'])){
+                    $ContentUpdate[] = (new ToolTip($AccountArray['name'].' '.new InfoIcon(), htmlspecialchars(
+                        implode('<br/>', $AccountArray['UpdateLog'])
+                    )))->enableHtml();
+                } else {
+                    $ContentUpdate[] = $AccountArray['name'];
+                }
+            }
+        }
+        if(!empty($deleteList)){
+            foreach($deleteList as $AccountArray) {
+                $ContentDelete[] = $AccountArray['name'].' - '.$AccountArray['firstname'].' '.$AccountArray['lastname'];
+            }
+        }
+        // Frontend Anzeige Error/Warnung
+        $CantCreatePanelContent = array();
+        $CantUpdatePanelContent = array();
+        if(!empty($cantCreateList)){
+            foreach($cantCreateList as $cantCreateAccount){
+                $CantCreatePanelContent[] = implode('<br/>', $cantCreateAccount);
+            }
+        }
+        if(!empty($cantUpdateList)){
+            foreach($cantUpdateList as $cantUpdateAccount){
+                $CantUpdatePanelContent[] = implode('<br/>', $cantUpdateAccount);
+            }
+        }
+
+        $AccordionCreate = new Accordion();
+        $AccordionCreate->addItem('Benutzer die nicht in DLLP angelegt werden können ('.$count['cantCreate'].')',
+            '<br/><br/>'.
+            new Listing($CantCreatePanelContent)
+        );
+        $AccordionCreate->addItem('Benutzer für DLLP anlegen ('.$count['create'].')',
+            new Listing($ContentCreate)
+        );
+
+        $AccordionDelete = new Accordion();
+        $AccordionDelete->addItem('Benutzer in DLLP entfernen ('.$count['delete'].')',
+            new Listing($ContentDelete)
+        );
+
+        $AccordionUpdate = new Accordion();
+        $AccordionUpdate->addItem('Benutzer die nicht in DLLP angepasst werden können ('.$count['cantUpdate'].')',
+            '<br/><br/>'.
+            new Listing($CantUpdatePanelContent)
+        );
+        $AccordionUpdate->addItem('Benutzer anpassen ('.$count['update'].')',
+            new TableData($CompareTable, null, array(
+                'User' => 'Benutzer',
+                'DLLP' => 'Daten aus DLLP',
+                'SSW' => 'Daten aus SSW',
+                'SSWCopy' => 'Daten Ergebnis',
+            ), array(
+                "sort" => false,
+                "responsive" => false,
+                'columnDefs' => array(
+                    array('width' => '10%', 'targets' => 0),
+                    array('width' => '30%', 'targets' => array(1,2,3)),
+                ),
+                'fixedHeader' => false
+            ))
+            , true
+        );
+
+        $AccordionUntouched = new Accordion();
+        $AccordionUntouched->addItem('Benutzer unverändert ('.$count['countOK'].')',
+            new TableData($OkTable, null, array(
+                'User' => 'Benutzer',
+                'SSW' => 'Daten von der SSW sind in DLLP aktuell',
+            ), array(
+                "sort" => false,
+                "responsive" => false,
+                'columnDefs' => array(
+                    array('width' => '10%', 'targets' => 0),
+                    array('width' => '90%', 'targets' => array(1)),
+                ),
+                'fixedHeader' => false
+            ))
+            , false
+        );
+
+        if($count['create'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonCreate->setDisabled();
+        }
+        if($count['update'] == 0){
+            /** @var $ButtonUpdate Primary */
+            $ButtonUpdate->setDisabled();
+        }
+        if($count['delete'] == 0){
+            /** @var $ButtonUpdate Danger */
+            $ButtonDelete->setDisabled();
+        }
+
+        $Stage->setContent(new Layout(new LayoutGroup(array(
+            new LayoutRow(array(
+                new LayoutColumn(
+                    new Panel('Übersicht',
+                        new Layout(new LayoutGroup(
+                            new LayoutRow(array(
+                                new LayoutColumn(
+                                    new SuccessText('('.$count['cantCreate'].') Benutzer, die nicht angelegt werden können').'<br/>'.
+                                    new SuccessText('('.$count['create'].') Benutzer für DLLP anlegen')
+                                    , 3),
+                                new LayoutColumn(
+                                    new DangerText('('.$count['delete'].') Benutzer in DLLP entfernen')
+                                    , 3),
+                                new LayoutColumn(
+                                    new InfoText('('.$count['cantUpdate'].') Benutzer, die nicht angepasst werden können').'<br/>'.
+                                    new InfoText('('.$count['update'].') Benutzer anpassen') // ' von '.$count['allUpdate'].
+                                    , 3),
+                                new LayoutColumn(
+                                    '('.$count['countOK'].') Benutzer unverändert'
+                                    , 3),
+                            ))
+                        ))
+                        , Panel::PANEL_TYPE_INFO
+                    )
+                )
+            )),
+            new LayoutRow(array(
+                new LayoutColumn(
+                    new Well(new Title(new PullClear(new SuccessText(new Plus().' Anlegen').new PullRight($ButtonCreate)))
+                        .$AccordionCreate)
+                    , 6),
+                new LayoutColumn(
+                    new Well(new Title(new PullClear(new DangerText(new Remove().' Löschen').new PullRight($ButtonDelete)))
+                        .$AccordionDelete)
+                    , 6)
+            )),
+            new LayoutRow(
+                new LayoutColumn(
+                    new Well(new Title(new PullClear(new InfoText(new Edit().' Anpassen').new PullRight($ButtonUpdate)))
+                        .$AccordionUpdate)
+                )
+            ),
+            new LayoutRow(
+                new LayoutColumn(
+                    new Well($AccordionUntouched)
+                )
+            ),
+        ))));
+
+        return $Stage;
+    }
+
+    /**
+     * @param $YearId
+     * @return Stage
+     */
+    public function frontendUniventionStudent($YearId = '')
+    {
+        set_time_limit(900);
+        $Stage = new Stage('DLLP', 'Schnittstelle API Schüler');
+        $tblUniventionAccountList = array();
+        $UserUniventionList = array();
+        $Service = UniventionTransfer::useService();
+        // Student
+        if(($tblUniventionAccountListTemp = $Service->getUniventionAccountListByRole(TblUniventionAccount::VALUE_STUDENT))){
+            $tblUniventionAccountList = array_merge($tblUniventionAccountList, $tblUniventionAccountListTemp);
+        }
+        if($tblUniventionAccountList){
+            $tblUniventionAccountList = array_unique($tblUniventionAccountList);
+            $UserUniventionList = $Service->convertToArray($tblUniventionAccountList);
+        }
+        // ApiButtons
+        list($ButtonCreate, $ButtonUpdate, $ButtonDelete) = $this->getApiButtons($YearId, TblUniventionAccount::VALUE_STUDENT);
+
+        $YearString = '&nbsp;Aktuelles SJ';
+        if($YearId == ''){
+            $YearString = new PrimaryText(new Bold($YearString));
+        }
+        $Stage->addButton(new Standard($YearString, '/Setting/Univention/ApiStudent', new GroupIcon(), array('YearId' => '')));
+        if($nextYearList = Term::useService()->getYearAllFutureYears(1)){
+            foreach($nextYearList as $nextYear){
+                $YearString = '&nbsp;'.$nextYear->getDisplayName();
+                if($YearId == $nextYear->getId()){
+                    $YearString = new PrimaryText(new Bold($YearString));
+                }
+                $Stage->addButton(new Standard($YearString, '/Setting/Univention/ApiStudent', new GroupIcon(), array('YearId' => $nextYear->getId())));
+            }
+        }
+        $UserSchulsoftwareList = array();
+        // Vorraussetzung, es muss ein aktives Schuljahr geben.
+        $tblYearList = Term::useService()->getYearByNow();
+        if($tblYearList){
+            $UserSchulsoftwareList = Univention::useService()->getSchulsoftwareUser($YearId, TblUniventionAccount::VALUE_STUDENT);
+            if($UserSchulsoftwareList){
+                $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
+            }
+        }
+
+        // Prüfung der Accounts (was soll mit welchem Account gemacht werden)
+        list($createList, $cantCreateList, $deepSearchList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
+        $count['create'] = count($createList);
+        $count['cantCreate'] = count($cantCreateList);
+        $count['cantUpdate'] = count($cantUpdateList);
+        $count['delete'] = count($deleteList);
+        // Einstellen welche Felder verglichen werden sollen:
+        $keyToCompareList = array(
+            'firstname' => '',
+            'lastname' => '',
+            'mail' => '',
+            'role' => '',
+//            'schools' => '',
+            'school_classes' => '',
+            'recoveryMail' => '',
+            'schoolCode' => '',
+//            'guardians' => '',
+            'guardianList' => '',
+//            'wards' => '',
+//            'wardList' => '',
+        );
+        list($OkList, $updateList) = Univention::useService()->getOkAndUpdateList($deepSearchList, $UserUniventionList, $keyToCompareList);
+        $count['update'] = count($updateList);
+        $count['countOK'] = count($OkList);
+
+        Debugger::devDump($updateList);
+
+
+        $CompareTable = array();
+        foreach($updateList as $AccountActive){
+            $ExistUser = $UserUniventionList[$AccountActive['record_uid']];
+            $CompareRow = array(
+                'User' => $AccountActive['name'],
+                'DLLP' => $keyToCompareList,
+                'SSW' => $keyToCompareList,
+                // SSWCopy from function
+            );
+            $CompareRow = Univention::useService()->fillCompareRow($CompareRow, $ExistUser, $AccountActive);
+            $CompareRow = $this->getCompareTable($CompareRow, $keyToCompareList);
+            $CompareTable[] = $CompareRow;
+        }
+
+
+        $OkTable = array();
+        foreach($OkList as $AccountActive){
+            $OkRow = array(
+                'User' => $AccountActive['name'],
+                'SSW' => $keyToCompareList,
+            );
+            $OkRow = Univention::useService()->fillOkRow($OkRow, $AccountActive); // , $keyToCompareList
             $OkRow = $this->getOkLayout($OkRow, $keyToCompareList);
             $OkTable[] = $OkRow;
         }
@@ -600,6 +858,8 @@ class Frontend extends Extension implements IFrontendInterface
             'schoolCode' => '',
 //            'guardians' => '',
 //            'guardianList' => '',
+//            'wards' => '',
+            'wardList' => '',
         );
         list($OkList, $updateList) = Univention::useService()->getOkAndUpdateList($deepSearchList, $UserUniventionList, $keyToCompareList);
         $count['update'] = count($updateList);
@@ -627,261 +887,7 @@ class Frontend extends Extension implements IFrontendInterface
                 'User' => $AccountActive['name'],
                 'SSW' => $keyToCompareList,
             );
-            $OkRow = Univention::useService()->fillOkRow($OkRow, $AccountActive, $keyToCompareList);
-            $OkRow = $this->getOkLayout($OkRow, $keyToCompareList);
-            $OkTable[] = $OkRow;
-        }
-
-        // Frontend Anzeige
-        $ContentCreate = array();
-//        $ContentUpdate = array();
-        $ContentDelete = array();
-        if(!empty($createList)){
-            foreach($createList as $AccountArray) {
-                $ContentCreate[] = $AccountArray['name'].' - '.$AccountArray['firstname'].' '.$AccountArray['lastname'];
-            }
-        }
-        if(!empty($updateList)){
-            foreach($updateList as $AccountArray) {
-                if(isset($AccountArray['UpdateLog'])){
-                    $ContentUpdate[] = (new ToolTip($AccountArray['name'].' '.new InfoIcon(), htmlspecialchars(
-                        implode('<br/>', $AccountArray['UpdateLog'])
-                    )))->enableHtml();
-                } else {
-                    $ContentUpdate[] = $AccountArray['name'];
-                }
-            }
-        }
-        if(!empty($deleteList)){
-            foreach($deleteList as $AccountArray) {
-                $ContentDelete[] = $AccountArray['name'].' - '.$AccountArray['firstname'].' '.$AccountArray['lastname'];
-            }
-        }
-        // Frontend Anzeige Error/Warnung
-        $CantCreatePanelContent = array();
-        $CantUpdatePanelContent = array();
-        if(!empty($cantCreateList)){
-            foreach($cantCreateList as $cantCreateAccount){
-                $CantCreatePanelContent[] = implode('<br/>', $cantCreateAccount);
-            }
-        }
-        if(!empty($cantUpdateList)){
-            foreach($cantUpdateList as $cantUpdateAccount){
-                $CantUpdatePanelContent[] = implode('<br/>', $cantUpdateAccount);
-            }
-        }
-
-        $AccordionCreate = new Accordion();
-        $AccordionCreate->addItem('Benutzer die nicht in DLLP angelegt werden können ('.$count['cantCreate'].')',
-            '<br/><br/>'.
-            new Listing($CantCreatePanelContent)
-        );
-        $AccordionCreate->addItem('Benutzer für DLLP anlegen ('.$count['create'].')',
-            new Listing($ContentCreate)
-        );
-
-        $AccordionDelete = new Accordion();
-        $AccordionDelete->addItem('Benutzer in DLLP entfernen ('.$count['delete'].')',
-            new Listing($ContentDelete)
-        );
-
-        $AccordionUpdate = new Accordion();
-        $AccordionUpdate->addItem('Benutzer die nicht in DLLP angepasst werden können ('.$count['cantUpdate'].')',
-            '<br/><br/>'.
-            new Listing($CantUpdatePanelContent)
-        );
-        $AccordionUpdate->addItem('Benutzer anpassen ('.$count['update'].')',
-            new TableData($CompareTable, null, array(
-                'User' => 'Benutzer',
-                'DLLP' => 'Daten aus DLLP',
-                'SSW' => 'Daten aus SSW',
-                'SSWCopy' => 'Daten Ergebnis',
-            ), array(
-                "sort" => false,
-                "responsive" => false,
-                'columnDefs' => array(
-                    array('width' => '10%', 'targets' => 0),
-                    array('width' => '30%', 'targets' => array(1,2,3)),
-                ),
-                'fixedHeader' => false
-            ))
-            , true
-        );
-
-        $AccordionUntouched = new Accordion();
-        $AccordionUntouched->addItem('Benutzer unverändert ('.$count['countOK'].')',
-            new TableData($OkTable, null, array(
-                'User' => 'Benutzer',
-                'SSW' => 'Daten von der SSW sind in DLLP aktuell',
-            ), array(
-                "sort" => false,
-                "responsive" => false,
-                'columnDefs' => array(
-                    array('width' => '10%', 'targets' => 0),
-                    array('width' => '90%', 'targets' => array(1)),
-                ),
-                'fixedHeader' => false
-            ))
-            , false
-        );
-
-        if($count['create'] == 0){
-            /** @var $ButtonUpdate Primary */
-            $ButtonCreate->setDisabled();
-        }
-        if($count['update'] == 0){
-            /** @var $ButtonUpdate Primary */
-            $ButtonUpdate->setDisabled();
-        }
-        if($count['delete'] == 0){
-            /** @var $ButtonUpdate Danger */
-            $ButtonDelete->setDisabled();
-        }
-
-        $Stage->setContent(new Layout(new LayoutGroup(array(
-            new LayoutRow(array(
-                new LayoutColumn(
-                    new Panel('Übersicht',
-                        new Layout(new LayoutGroup(
-                            new LayoutRow(array(
-                                new LayoutColumn(
-                                    new SuccessText('('.$count['cantCreate'].') Benutzer, die nicht angelegt werden können').'<br/>'.
-                                    new SuccessText('('.$count['create'].') Benutzer für DLLP anlegen')
-                                    , 3),
-                                new LayoutColumn(
-                                    new DangerText('('.$count['delete'].') Benutzer in DLLP entfernen')
-                                    , 3),
-                                new LayoutColumn(
-                                    new InfoText('('.$count['cantUpdate'].') Benutzer, die nicht angepasst werden können').'<br/>'.
-                                    new InfoText('('.$count['update'].') Benutzer anpassen') // ' von '.$count['allUpdate'].
-                                    , 3),
-                                new LayoutColumn(
-                                    '('.$count['countOK'].') Benutzer unverändert'
-                                    , 3),
-                            ))
-                        ))
-                        , Panel::PANEL_TYPE_INFO
-                    )
-                )
-            )),
-            new LayoutRow(array(
-                new LayoutColumn(
-                    new Well(new Title(new PullClear(new SuccessText(new Plus().' Anlegen').new PullRight($ButtonCreate)))
-                        .$AccordionCreate)
-                    , 6),
-                new LayoutColumn(
-                    new Well(new Title(new PullClear(new DangerText(new Remove().' Löschen').new PullRight($ButtonDelete)))
-                        .$AccordionDelete)
-                    , 6)
-            )),
-            new LayoutRow(
-                new LayoutColumn(
-                    new Well(new Title(new PullClear(new InfoText(new Edit().' Anpassen').new PullRight($ButtonUpdate)))
-                        .$AccordionUpdate)
-                )
-            ),
-            new LayoutRow(
-                new LayoutColumn(
-                    new Well($AccordionUntouched)
-                )
-            ),
-        ))));
-
-        return $Stage;
-    }
-
-    /**
-     * @param $YearId
-     * @return Stage
-     */
-    public function frontendUniventionStudent($YearId = '')
-    {
-        set_time_limit(900);
-        $Stage = new Stage('DLLP', 'Schnittstelle API Schüler');
-        $tblUniventionAccountList = array();
-        $UserUniventionList = array();
-        $Service = UniventionTransfer::useService();
-        // Student
-        if(($tblUniventionAccountListTemp = $Service->getUniventionAccountListByRole(TblUniventionAccount::VALUE_STUDENT))){
-            $tblUniventionAccountList = array_merge($tblUniventionAccountList, $tblUniventionAccountListTemp);
-        }
-        if($tblUniventionAccountList){
-            $tblUniventionAccountList = array_unique($tblUniventionAccountList);
-            $UserUniventionList = $Service->convertToArray($tblUniventionAccountList);
-        }
-        // ApiButtons
-        list($ButtonCreate, $ButtonUpdate, $ButtonDelete) = $this->getApiButtons($YearId, TblUniventionAccount::VALUE_STUDENT);
-
-        $YearString = '&nbsp;Aktuelles SJ';
-        if($YearId == ''){
-            $YearString = new PrimaryText(new Bold($YearString));
-        }
-        $Stage->addButton(new Standard($YearString, '/Setting/Univention/ApiStudent', new GroupIcon(), array('YearId' => '')));
-        if($nextYearList = Term::useService()->getYearAllFutureYears(1)){
-            foreach($nextYearList as $nextYear){
-                $YearString = '&nbsp;'.$nextYear->getDisplayName();
-                if($YearId == $nextYear->getId()){
-                    $YearString = new PrimaryText(new Bold($YearString));
-                }
-                $Stage->addButton(new Standard($YearString, '/Setting/Univention/ApiStudent', new GroupIcon(), array('YearId' => $nextYear->getId())));
-            }
-        }
-        $UserSchulsoftwareList = array();
-        // Vorraussetzung, es muss ein aktives Schuljahr geben.
-        $tblYearList = Term::useService()->getYearByNow();
-        if($tblYearList){
-            $UserSchulsoftwareList = Univention::useService()->getSchulsoftwareUser($YearId, TblUniventionAccount::VALUE_STUDENT);
-            if($UserSchulsoftwareList){
-                $UserSchulsoftwareList = array_filter($UserSchulsoftwareList);
-            }
-        }
-
-        // Prüfung der Accounts (was soll mit welchem Account gemacht werden)
-        list($createList, $cantCreateList, $deepSearchList, $cantUpdateList, $deleteList) = Univention::useService()->getCompareUserList($UserSchulsoftwareList, $UserUniventionList);
-        $count['create'] = count($createList);
-        $count['cantCreate'] = count($cantCreateList);
-        $count['cantUpdate'] = count($cantUpdateList);
-        $count['delete'] = count($deleteList);
-        // Einstellen welche Felder verglichen werden sollen:
-        $keyToCompareList = array(
-            'firstname' => '',
-            'lastname' => '',
-            'mail' => '',
-            'role' => '',
-//            'schools' => '',
-            'school_classes' => '',
-            'recoveryMail' => '',
-            'schoolCode' => '',
-//            'guardians' => '',
-            'guardianList' => '',
-        );
-        list($OkList, $updateList) = Univention::useService()->getOkAndUpdateList($deepSearchList, $UserUniventionList, $keyToCompareList);
-        $count['update'] = count($updateList);
-        $count['countOK'] = count($OkList);
-
-
-        $CompareTable = array();
-        foreach($updateList as $AccountActive){
-            $ExistUser = $UserUniventionList[$AccountActive['record_uid']];
-            $CompareRow = array(
-                'User' => $AccountActive['name'],
-                'DLLP' => $keyToCompareList,
-                'SSW' => $keyToCompareList,
-                // SSWCopy from function
-            );
-            $CompareRow = Univention::useService()->fillCompareRow($CompareRow, $ExistUser, $AccountActive);
-            $CompareRow = $this->getCompareTable($CompareRow, $keyToCompareList);
-            $CompareTable[] = $CompareRow;
-        }
-
-
-        $OkTable = array();
-        foreach($OkList as $AccountActive){
-            $OkRow = array(
-                'User' => $AccountActive['name'],
-                'SSW' => $keyToCompareList,
-            );
-            $OkRow = Univention::useService()->fillOkRow($OkRow, $AccountActive, $keyToCompareList);
+            $OkRow = Univention::useService()->fillOkRow($OkRow, $AccountActive); // , $keyToCompareList
             $OkRow = $this->getOkLayout($OkRow, $keyToCompareList);
             $OkTable[] = $OkRow;
         }
@@ -1074,6 +1080,8 @@ class Frontend extends Extension implements IFrontendInterface
             'school_classes' => 'Klassen:',
             'guardians'      => 'Sorgeb.:',
             'guardianList'   => 'Sorgeb. (Liste):',
+            'wards'          => 'Kinder:',
+            'wardList'       => 'Kinder (Liste):',
             'schoolCode'     => 'DISCH:',
         ];
 
@@ -1126,6 +1134,8 @@ class Frontend extends Extension implements IFrontendInterface
             'school_classes' => 'Klassen:',
             'guardians'      => 'Sorgeb.:',
             'guardianList'   => 'Sorgeb. (Liste):',
+            'wards'      => 'Kinder:',
+            'wardList'   => 'Kinder (Liste):',
             'schoolCode'     => 'DISCH:',
         ];
         $CompareRow['User'] = $OkRow['User'];
@@ -1157,6 +1167,7 @@ class Frontend extends Extension implements IFrontendInterface
         $Stage = new Stage('Benutzerauswahl',$SiteType);
         $Route = '/Setting/Univention';
         $showGuardian = false;
+        $showWard = false;
         switch ($Role) {
             case TblUniventionAccount::VALUE_STUDENT:
                 $Route = '/Setting/Univention/ApiStudent';
@@ -1167,6 +1178,7 @@ class Frontend extends Extension implements IFrontendInterface
                 break;
             case TblUniventionAccount::VALUE_GUARDIAN:
                 $Route = '/Setting/Univention/ApiGuardian';
+                $showWard = true;
                 break;
         }
         $Stage->addButton(new Standard('Zurück', $Route, new ChevronLeft(), array('YearId' => $YearId)));
@@ -1216,7 +1228,9 @@ class Frontend extends Extension implements IFrontendInterface
             if($showGuardian){
                 $keyToCompareList['guardianList'] = '';
             }
-
+            if($showWard){
+                $keyToCompareList['wardList'] = '';
+            }
 
             list($OkList, $updateList) = Univention::useService()->getOkAndUpdateList($deepSearchList, $UserUniventionList, $keyToCompareList);
         }

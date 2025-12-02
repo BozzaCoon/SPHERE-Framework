@@ -166,7 +166,6 @@ class ApiUnivention implements IApiInterface
                 // Rollenforrang (Lehrer sollen als Lehrer und nicht als Sorgeberechtigte initialisiert werden
                 if(!empty($User['roles'])){
                     // teacher
-                    //
                     rsort($User['roles']);
                 }
 
