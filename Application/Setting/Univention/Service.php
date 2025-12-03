@@ -33,6 +33,7 @@ use SPHERE\Common\Frontend\Message\Repository\Success;
 use SPHERE\Common\Frontend\Text\Repository\TextBackground;
 use SPHERE\Common\Window\Redirect;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Service
@@ -248,9 +249,9 @@ class Service extends AbstractService
                         foreach ($tblToPersonList as $tblToPerson) {
                             if(($tblType = $tblToPerson->getTblType())){
                                 $TypeName = strtolower($tblType->getName());
-                                // Sorgeberechtigte
-                                // legal_wards können nur Sorgeberechtigte erhalten sonst API Fehler (Lehrer erhalten Kinder also nur über den Sorgeberechtigten import)
-                                if($Type == TblUserAccount::VALUE_TYPE_STUDENT){
+                                if($Type == TblUniventionAccount::VALUE_STUDENT){
+                                    // Sorgeberechtigte
+                                    // legal_wards können nur Sorgeberechtigte erhalten sonst API Fehler (Lehrer erhalten Kinder also nur über den Sorgeberechtigten import)
                                     if($TypeName == 'sorgeberechtigt' || $TypeName == 'vormund' || $TypeName == 'bevollmächtigt'){
                                         if(($tblPersonCustody = $tblToPerson->getServiceTblPersonFrom())){
                                             // Sorgeberechtigte selber sollen ignoriert werden
@@ -269,10 +270,9 @@ class Service extends AbstractService
                                             }
                                         }
                                     }
-                                }
-                                // Kinder
-                                // legal_guardians können nur Schüler erhalten sonst API Fehler
-                                if($Type == TblUserAccount::VALUE_TYPE_STUDENT){
+                                } elseif($Type == TblUniventionAccount::VALUE_GUARDIAN){
+                                    // Kinder
+                                    // legal_guardians können nur Schüler erhalten sonst API Fehler
                                     if($TypeName == 'sorgeberechtigt' || $TypeName == 'vormund' || $TypeName == 'bevollmächtigt'){
                                         if(($tblPersonStudent = $tblToPerson->getServiceTblPersonTo())){
                                             // Sorgeberechtigte selber sollen ignoriert werden
@@ -381,7 +381,7 @@ class Service extends AbstractService
                     foreach($roles as &$role){
                         $role = baseName($role);
                     }
-                    rsort($roles);
+//                    rsort($roles);
                     $UploadItem['role'] = implode(", ", $roles);
                 }
 

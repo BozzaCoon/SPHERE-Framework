@@ -128,7 +128,7 @@ class Service extends AbstractService
 
     /**
      * @param string $UserName
-     * @return mixed
+     * @return TblUniventionAccount
      */
     public function getUniventionAccountByName(string $UserName)
     {
@@ -240,12 +240,8 @@ class Service extends AbstractService
                 array_push($ImportList, $item);
             }
         }
-
-        if(!empty($ImportList)){
-            (new Data($this->getBinding()))->destroyUniventionAccountAllBulk();
-
-            (new Data($this->getBinding()))->createUniventionAccountBulk($ImportList);
-        }
+        (new Data($this->getBinding()))->destroyUniventionAccountAllBulk();
+        (new Data($this->getBinding()))->createUniventionAccountBulk($ImportList);
     }
 
 }

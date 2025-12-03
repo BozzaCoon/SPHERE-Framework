@@ -606,9 +606,6 @@ class Frontend extends Extension implements IFrontendInterface
         $count['update'] = count($updateList);
         $count['countOK'] = count($OkList);
 
-        Debugger::devDump($updateList);
-
-
         $CompareTable = array();
         foreach($updateList as $AccountActive){
             $ExistUser = $UserUniventionList[$AccountActive['record_uid']];
@@ -622,7 +619,6 @@ class Frontend extends Extension implements IFrontendInterface
             $CompareRow = $this->getCompareTable($CompareRow, $keyToCompareList);
             $CompareTable[] = $CompareRow;
         }
-
 
         $OkTable = array();
         foreach($OkList as $AccountActive){
@@ -1752,16 +1748,18 @@ class Frontend extends Extension implements IFrontendInterface
                                 .'oder Schule fehlt in DLLP')))->enableHtml();
                         break;
                         case 'guardianList':
-                            if(!empty($Value)){
-                                foreach($Value as $UserName){
-                                    if(!(UniventionTransfer::useService()->getUniventionAccountByName($UserName))){
-//                                        $KeyReplace = 'Sorgeberechtigte (liste):';
-//                                        $MouseOver = (new ToolTip($UserName. new InfoIcon(), htmlspecialchars(
-//                                            'Benutzer noch nicht in DLLP ')))->enableHtml();
-                                    }
-                                }
-                            }
-                        case 'legal_ward':
+                            // darf/kann leer sein
+//                            if(!empty($Value)){
+//                                foreach($Value as $UserName){
+//                                    if(!(UniventionTransfer::useService()->getUniventionAccountByName($UserName))){
+////                                        $KeyReplace = 'Sorgeberechtigte (liste):';
+////                                        $MouseOver = (new ToolTip($UserName. new InfoIcon(), htmlspecialchars(
+////                                            'Benutzer noch nicht in DLLP ')))->enableHtml();
+//                                    }
+//                                }
+//                            }
+                            break;
+                        case 'wardList ':
                             // darf/kann leer sein
                             break;
                         case 'udm_properties':
@@ -1785,7 +1783,7 @@ class Frontend extends Extension implements IFrontendInterface
                     }
                     if(empty($Value)){
                         // Ausnahmen die keine Fehler leer keine Fehler erzeugen
-                        if($Key != 'legal_guardians' && $Key != 'guardianList' && $Key != 'legal_wards'){
+                        if($Key != 'legal_guardians' && $Key != 'guardianList' && $Key != 'legal_wards' && $Key != 'wardList'){
                             $ErrorLog[] = ($KeyReplace ? : $Key).' '.new DangerText('nicht vorhanden! ').$MouseOver;
                         }
                     }
@@ -1830,7 +1828,6 @@ class Frontend extends Extension implements IFrontendInterface
                                     .'(Lehrauftrag / Schulverlauf / Mandant / Schule)')))->enableHtml();
                             break;
                         }
-
                         if(empty($Value)){
                                 // Mousover Problembeschreibung
                             switch($Key){
@@ -1893,10 +1890,6 @@ class Frontend extends Extension implements IFrontendInterface
             }
             $ErrorLog[] = new Bold($Account['name']).' '.$PersonLink;
 
-            if($Account['name'] == 'REF-AlFe30'){
-
-            }
-
             foreach($Account['guardianList'] as $UserName){
                 if(!(UniventionTransfer::useService()->getUniventionAccountByName($UserName))){
                     $MouseOver = (new ToolTip(new InfoIcon(), htmlspecialchars(
@@ -1904,14 +1897,7 @@ class Frontend extends Extension implements IFrontendInterface
                     $ErrorLog[] = 'Sorgeberechtigter: '.new DangerText($UserName.' ').$MouseOver;
                 }
             }
-
-
-//            if($Account['name'] == 'REF-AlHa05'){
-//                Debugger::devDump($Account);
-//                Debugger::devDump($ErrorLog);
-//            }
         }
-
 
         // Errorlog nur mit Namen wieder entfernen
         // Count 1 ist nur der Name ohne Fehlermeldung und ist im allgemeinen ein ungültiger "Fund"

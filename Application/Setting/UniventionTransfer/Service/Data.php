@@ -81,14 +81,15 @@ class Data extends AbstractData
 
     /**
      * @param string $UserName
-     * @return mixed
+     * @return TblUniventionAccount|false
      */
     public function getUniventionAccountByName(string $UserName)
     {
-
-        return $this->getCachedEntityBy(__METHOD__, $this->getConnection()->getEntityManager(), 'TblUniventionAccount',
+        /** @var TblUniventionAccount|false $tblUniventionAccount */
+        $tblUniventionAccount = $this->getCachedEntityBy(__METHOD__, $this->getConnection()->getEntityManager(), 'TblUniventionAccount',
             array(TblUniventionAccount::ATTR_NAME => $UserName)
         );
+        return $tblUniventionAccount;
     }
 
 
