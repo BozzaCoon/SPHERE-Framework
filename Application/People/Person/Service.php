@@ -650,6 +650,14 @@ class Service extends AbstractService
     }
 
     /**
+     * @return false|TblPerson[]
+     */
+    public function getPersonWithoutUuid()
+    {
+        return (new Data($this->getBinding()))->getPersonWithoutUuid();
+    }
+
+    /**
      * @param TblPerson $tblPerson
      *
      * @return bool
@@ -1463,7 +1471,7 @@ class Service extends AbstractService
                 $cityDistrict = $item['CityDistrict'];
                 $county = $item['County'];
                 $tblState = Address::useService()->getStateById($item['State']);
-                $nation = $item['Nation'];
+                $tblCountry = Address::useService()->getCountryById($item['Country']);
                 $remark = $item['Remark'];
 
                 $countPersons = 0;
@@ -1481,7 +1489,7 @@ class Service extends AbstractService
                 }
 
                 if ($tblType || $streetName || $streetNumber || $cityCode || $cityName || $cityDistrict || $county
-                    || $tblState || $nation || $remark
+                    || $tblState || $tblCountry || $remark
                 ) {
                     $isAdd = true;
                     $this->setMessage($tblType, $key, 'Type', 'Bitte wählen Sie einen Typ aus.', $Errors, $errorAddress);
@@ -1489,6 +1497,7 @@ class Service extends AbstractService
                     $this->setMessage($streetNumber, $key, 'StreetNumber', 'Bitte geben Sie eine Hausnummer ein.', $Errors, $errorAddress);
                     $this->setMessage($cityCode, $key, 'CityCode', 'Bitte geben Sie eine Postleitzahl ein.', $Errors, $errorAddress);
                     $this->setMessage($cityName, $key, 'CityName', 'Bitte geben Sie einen Ort ein.', $Errors, $errorAddress);
+                    $this->setMessage($tblCountry, $key, 'Country', 'Bitte geben Sie ein Land ein.', $Errors, $errorAddress);
 
                     if ($countPersons == 0) {
                         $errorAddress = true;
@@ -1508,7 +1517,7 @@ class Service extends AbstractService
                         'CityDistrict' => $cityDistrict,
                         'County' => $county,
                         'tblState' => $tblState,
-                        'Nation' => $nation,
+                        'tblCountry' => $tblCountry,
                         'Remark' => $remark,
                         'tblPersonList' => $tblPersonList
                     );
@@ -1654,6 +1663,7 @@ class Service extends AbstractService
         } else {
             foreach ($addressAddList as $address) {
                 $tblState = $address['tblState'];
+                $tblCountry = $address['tblCountry'];
                 Address::useService()->insertAddressToPersonList(
                     $address['tblType'],
                     $address['StreetName'],
@@ -1663,7 +1673,7 @@ class Service extends AbstractService
                     $address['CityDistrict'],
                     '',
                     $address['County'],
-                    $address['Nation'],
+                    $tblCountry, // soll/darf nicht leer sein, ist zukünftig required
                     $address['tblPersonList'],
                     $tblState ? $tblState : null,
                     $address['Remark']

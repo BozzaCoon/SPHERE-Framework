@@ -4,6 +4,7 @@ namespace SPHERE\Application\Contact\Address;
 use SPHERE\Application\Contact\Address\Service\Data;
 use SPHERE\Application\Contact\Address\Service\Entity\TblAddress;
 use SPHERE\Application\Contact\Address\Service\Entity\TblCity;
+use SPHERE\Application\Contact\Address\Service\Entity\TblCountry;
 use SPHERE\Application\Contact\Address\Service\Entity\TblRegion;
 use SPHERE\Application\Contact\Address\Service\Entity\TblState;
 use SPHERE\Application\Contact\Address\Service\Entity\TblToCompany;
@@ -14,6 +15,7 @@ use SPHERE\Application\Corporation\Company\Service\Entity\TblCompany;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Common\Frontend\Form\IFormInterface;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Service
@@ -57,6 +59,17 @@ class Service extends AbstractService
     /**
      * @param integer $Id
      *
+     * @return bool|TblCity
+     */
+    public function getCountryById($Id)
+    {
+
+        return (new Data($this->getBinding()))->getCountryById($Id);
+    }
+
+    /**
+     * @param integer $Id
+     *
      * @return bool|TblAddress
      */
     public function getAddressById($Id)
@@ -90,6 +103,15 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->getStateAll();
+    }
+
+    /**
+     * @return bool|TblState[]
+     */
+    public function getCountryAll()
+    {
+
+        return (new Data($this->getBinding()))->getCountryAll();
     }
 
     /**
@@ -159,6 +181,15 @@ class Service extends AbstractService
     }
 
     /**
+     * @return bool|TblAddress[]
+     */
+    public function getAddressNotLinked()
+    {
+
+        return (new Data($this->getBinding()))->getAddressNotLinked();
+    }
+
+    /**
      * distinct & only with existing Usage
      * @return array[$StreetNameList, $CountyList, $NationList, $CityList, $CodeList, $DistrictList]
      */
@@ -180,9 +211,6 @@ class Service extends AbstractService
                         case TblAddress::ATTR_COUNTY:
                             $CountyList[] = $value;
                             break;
-                        case TblAddress::ATTR_NATION:
-                            $NationList[] = $value;
-                            break;
                         case TblCity::ATTR_NAME:
                             $CityList[] = $value;
                             break;
@@ -196,7 +224,27 @@ class Service extends AbstractService
                 }
             }
         }
-        return array($AddressExtraList, $StreetNameList, $CountyList, $NationList, $CityList, $CodeList, $DistrictList);
+        return array($AddressExtraList, $StreetNameList, $CountyList, $CityList, $CodeList, $DistrictList);
+    }
+
+    /**
+     * @param $Name
+     * @return bool|TblCountry
+     */
+    public function getCountryByName($Name)
+    {
+
+        return (new Data($this->getBinding()))->getCountryByName($Name);
+    }
+
+    /**
+     * @param $Extern
+     * @return bool|TblCountry
+     */
+    public function getCountryByExtern($Extern)
+    {
+
+        return (new Data($this->getBinding()))->getCountryByExtern($Extern);
     }
 
     /**
@@ -213,6 +261,7 @@ class Service extends AbstractService
      * @param $Street
      * @param $City
      * @param $Type
+     * @param $Country
      * @param $OnlineContactId
      * @param TblToPerson|null $tblToPerson
      *
@@ -223,6 +272,7 @@ class Service extends AbstractService
         $Street,
         $City,
         $Type,
+        $Country,
         $OnlineContactId,
         TblToPerson $tblToPerson = null
     ) {
@@ -261,6 +311,10 @@ class Service extends AbstractService
             $error = true;
         } else {
             $form->setSuccess('City[Name]');
+        }
+        if (!$this->getCountryById($Country)){
+            $form->setError('Country', 'Bitte wählen Sie das Land aus');
+            $error = true;
         }
         if (!$tblType) {
             $form->setError('Type[Type]', 'Bitte geben Sie einen Typ ein');
@@ -377,7 +431,7 @@ class Service extends AbstractService
         int $State,
         array $Type,
         string $County,
-        string $Nation,
+        string $Country,
         string $AddressExtra
     ) {
 
@@ -388,11 +442,16 @@ class Service extends AbstractService
             } else {
                 $tblState = null;
             }
+            if ($Country) {
+                $tblCountry = $this->getCountryById($Country);
+            } else {
+                $tblCountry = null;
+            }
             $tblCity = (new Data($this->getBinding()))->createCity(
                 $City['Code'], $City['Name'], $City['District']
             );
             $tblAddress = (new Data($this->getBinding()))->createAddress(
-                $tblState, $tblCity, $Street['Name'], $Street['Number'], '', '', $County, $Nation, $AddressExtra
+                $tblState, $tblCity, $Street['Name'], $Street['Number'], '', '', $County, '', $AddressExtra, $tblCountry
             );
 
             if ($tblType->getName() == 'Hauptadresse'
@@ -430,7 +489,7 @@ class Service extends AbstractService
      * @param $Type
      * @param $Region
      * @param $County
-     * @param $Nation
+     * @param $Country
      * @param $AddressExtra
      *
      * @return bool
@@ -443,7 +502,7 @@ class Service extends AbstractService
         $Type,
         $Region,
         $County,
-        $Nation,
+        $Country,
         $AddressExtra
     ) {
 
@@ -456,8 +515,13 @@ class Service extends AbstractService
             $tblCity = (new Data($this->getBinding()))->createCity(
                 $City['Code'], $City['Name'], $City['District']
             );
+
+            $tblCountry = $this->getCountryById($Country);
+            if (!$tblCountry) {
+                $tblCountry = null;
+            }
             $tblAddress = (new Data($this->getBinding()))->createAddress(
-                $tblState, $tblCity, $Street['Name'], $Street['Number'], '', $Region, $County, $Nation, $AddressExtra
+                $tblState, $tblCity, $Street['Name'], $Street['Number'], '', $Region, $County, '', $AddressExtra, $tblCountry
             );
             if ($tblToPerson->getServiceTblPerson()) {
                 // Update current
@@ -603,6 +667,18 @@ class Service extends AbstractService
 
         (new Data($this->getBinding()))->updateCityAnonymousBulk($ProcessList, $CityName);
         return (new Data($this->getBinding()))->updateAddressAnonymousBulk($ProcessList);
+    }
+
+    /**
+     * @param TblAddress  $tblAddress
+     * @param ?TblCountry $tblCountry
+     *
+     * @return bool
+     */
+    public function updateAddressCountry(TblAddress $tblAddress, TblCountry $tblCountry = null): bool
+    {
+
+        return (new Data($this->getBinding()))->updateAddressCountry($tblAddress, $tblCountry);
     }
 
     /**
@@ -895,6 +971,16 @@ class Service extends AbstractService
     }
 
     /**
+     * @param TblAddress[] $tblAddressList
+     * @return void
+     */
+    public function destroyAddressBulk(array $tblAddressList): void
+    {
+
+        (new Data($this->getBinding()))->destroyAddressBulk($tblAddressList);
+    }
+
+    /**
      * @param TblPerson $tblPerson
      *
      * @return array of TblAddress->Id
@@ -961,6 +1047,7 @@ class Service extends AbstractService
      * @param $CityDistrict
      * @param $County
      * @param $Nation
+     * @param TblCountry $tblCountry
      * @param array $tblPersonList
      * @param TblState|null $tblState
      * @param string $Remark
@@ -976,7 +1063,7 @@ class Service extends AbstractService
         $CityDistrict,
         $Region,
         $County,
-        $Nation,
+        TblCountry $tblCountry,
         $tblPersonList = array(),
         TblState $tblState = null,
         $Remark = ''
@@ -990,7 +1077,10 @@ class Service extends AbstractService
                 '',
                 $Region,
                 $County,
-                $Nation
+                '',
+                '',
+                $tblCountry
+
             ))
         ) {
             foreach ($tblPersonList as $tblPerson) {

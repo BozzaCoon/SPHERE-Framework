@@ -96,6 +96,7 @@ class Setup extends AbstractSetup
             $Table->addColumn('ImportId', 'string');
         }
         $this->createColumn($Table, 'CallName', self::FIELD_TYPE_STRING);
+        $this->createColumn($Table, 'Uuid', self::FIELD_TYPE_STRING, true);
 
         $this->getConnection()->addForeignKey($Table, $tblSalutation, true);
 

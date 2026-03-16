@@ -153,6 +153,34 @@ class Data extends AbstractData
     }
 
     /**
+     *  Array include:
+     *  [Id], // TblMail Id
+     *  [Address]
+     * @return bool|TblMail[]
+     */
+    public function getMailNotLinked()
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+
+        $Builder = $Manager->getQueryBuilder();
+        $tblMail = new TblMail();
+        $tblToPerson = new TblToPerson();
+        $tblToCompany = new TblToCompany();
+
+        $Query = $Builder->select('tM.Id, tM.Address')
+            ->from($tblMail->getEntityFullName(), 'tM')
+            ->leftJoin($tblToPerson->getEntityFullName(), 'tTP', 'WITH', 'tTP.tblMail = tM.Id')
+            ->leftJoin($tblToCompany->getEntityFullName(), 'tTC', 'WITH', 'tTC.tblMail = tM.Id')
+            ->where($Builder->expr()->isNull('tTP.Id'))
+            ->andWhere($Builder->expr()->isNull('tTC.Id'))
+            ->getQuery();
+
+        $resultList = $Query->getResult();
+        return $resultList;
+    }
+
+    /**
      * @param $Address
      *
      * @return TblMail
@@ -285,6 +313,23 @@ class Data extends AbstractData
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param TblMail[] $tblAddressList
+     * @return void
+     */
+    public function destroyMailBulk(array $tblMailList): void
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        /** @var TblMail $tblMail */
+        foreach($tblMailList as $tblMail){
+            Protocol::useService()->createDeleteEntry($this->getConnection()->getDatabase(), $tblMail, true);
+            $Manager->bulkKillEntity($tblMail);
+        }
+        $Manager->flushCache();
+        Protocol::useService()->flushBulkEntries();
     }
 
     /**

@@ -3,6 +3,7 @@ namespace SPHERE\Application\Education\Lesson\DivisionCourse\Service;
 
 use DateTime;
 use SPHERE\Application\Corporation\Company\Company;
+use SPHERE\Application\Corporation\Company\Service\Entity\TblCompany;
 use SPHERE\Application\Education\Lesson\Course\Course;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourseLink;
@@ -20,6 +21,7 @@ use SPHERE\Application\Platform\System\Protocol\Protocol;
 use SPHERE\System\Database\Fitting\ColumnHydrator;
 use SPHERE\System\Database\Fitting\Element;
 use SPHERE\System\Extension\Extension;
+use SPHERE\System\Extension\Repository\Debugger;
 
 class Data extends DataTeacher
 {
@@ -56,6 +58,16 @@ class Data extends DataTeacher
          * Migration der alten Klassen-Daten in die neue DB-Struktur
          */
 //        $this->migrateAll();
+
+        /**
+         * Uuid für alle vorhandenen Klassen setzen
+         */
+        if(($tblDivisionCourseList = $this->getDivisionCourseWithoutUuid())){
+            foreach($tblDivisionCourseList as $tblDivisionCourse){
+                $this->updateDivisionCourseUuid($tblDivisionCourse);
+            }
+        }
+
     }
 
     /**
@@ -155,6 +167,7 @@ class Data extends DataTeacher
         if($Entity === null) {
             $Entity = TblDivisionCourse::withParameter($tblType, $tblYear, $name, $description, $isShownInPersonData, $isReporting, $tblSubject);
             $Entity->setIsDigital($isDigital);
+            $Entity->setUuId(Element::Uuid_v4());
 
             $Manager->saveEntity($Entity);
             Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
@@ -195,6 +208,26 @@ class Data extends DataTeacher
             return true;
         }
 
+        return false;
+    }
+
+    /**
+     * @param TblDivisionCourse $tblDivisionCourse
+     * @return bool
+     */
+    private function updateDivisionCourseUuid(TblDivisionCourse $tblDivisionCourse): bool
+    {
+
+        $Manager = $this->getEntityManager();
+        /** @var TblDivisionCourse $Entity */
+        $Entity = $Manager->getEntityById('TblDivisionCourse', $tblDivisionCourse->getId());
+        $Protocol = clone $Entity;
+        if (null !== $Entity) {
+            $Entity->setUuid(Element::Uuid_v4());
+            $Manager->saveEntity($Entity);
+            Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(), $Protocol, $Entity);
+            return true;
+        }
         return false;
     }
 
@@ -451,6 +484,19 @@ class Data extends DataTeacher
         }
 
         return $query->getQuery()->getResult();
+    }
+
+    /**
+     * @return false|TblDivisionCourse[]
+     * @throws \Exception
+     */
+    public function getDivisionCourseWithoutUuid()
+    {
+
+        return $this->getForceEntityListBy(__METHOD__, $this->getEntityManager(), 'TblDivisionCourse', array(
+            TblDivisionCourse::ATTR_UUID => null,
+            TblDivisionCourse::ENTITY_REMOVE => null
+        ));
     }
 
     /**
@@ -885,6 +931,23 @@ class Data extends DataTeacher
         }
 
         return $this->getCachedEntityListBy(__Method__, $this->getConnection()->getEntityManager(), 'TblStudentEducation', $parameters);
+    }
+
+    /**
+     * @param TblYear $tblYear
+     * @param TblCompany $tblCompany
+     * @param TblType $tblSchoolType
+     *
+     * @return false|TblStudentEducation[]
+     */
+    public function getStudentEducationListByYearAndInstitutionAndType(TblYear $tblYear, TblCompany $tblCompany, TblType $tblSchoolType)
+    {
+
+        return $this->getCachedEntityListBy(__Method__, $this->getConnection()->getEntityManager(), 'TblStudentEducation', array(
+            TblStudentEducation::ATTR_SERVICE_TBL_YEAR => $tblYear->getId(),
+            TblStudentEducation::ATTR_SERVICE_TBL_COMPANY => $tblCompany->getId(),
+            TblStudentEducation::ATTR_SERVICE_TBL_SCHOOL_TYPE => $tblSchoolType->getId(),
+        ));
     }
 
     /**

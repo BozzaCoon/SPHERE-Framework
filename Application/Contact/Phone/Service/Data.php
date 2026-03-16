@@ -260,6 +260,23 @@ class Data extends AbstractData
     }
 
     /**
+     * @param TblPhone[] $tblPhoneList
+     * @return void
+     */
+    public function destroyPhoneBulk(array $tblPhoneList)
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        /** @var TblPhone $tblPhone */
+        foreach($tblPhoneList as $tblPhone){
+            Protocol::useService()->createDeleteEntry($this->getConnection()->getDatabase(), $tblPhone, true);
+            $Manager->bulkKillEntity($tblPhone);
+        }
+        $Manager->flushCache();
+        Protocol::useService()->flushBulkEntries();
+    }
+
+    /**
      * @param TblCompany $tblCompany
      * @param TblPhone $tblPhone
      * @param TblType $tblType
@@ -333,6 +350,30 @@ class Data extends AbstractData
             TblToPerson::SERVICE_TBL_PERSON => $tblPerson->getId(),
             TblToPerson::ATTR_IS_EMERGENCY_CONTACT => 1
         ));
+    }
+
+    /**
+     * @return false|TblPhone[]
+     */
+    public function getPhoneNotLinked()
+    {
+        $Manager = $this->getConnection()->getEntityManager();
+
+        $Builder = $Manager->getQueryBuilder();
+        $tblPhone = new TblPhone();
+        $tblToPerson = new TblToPerson();
+        $tblToCompany = new TblToCompany();
+
+        $Query = $Builder->select('tP.Id, tP.Number')
+            ->from($tblPhone->getEntityFullName(), 'tP')
+            ->leftJoin($tblToPerson->getEntityFullName(), 'tTP', 'WITH', 'tTP.tblPhone = tP.Id')
+            ->leftJoin($tblToCompany->getEntityFullName(), 'tTC', 'WITH', 'tTC.tblPhone = tP.Id')
+            ->where($Builder->expr()->isNull('tTP.Id'))
+            ->andWhere($Builder->expr()->isNull('tTC.Id'))
+            ->getQuery();
+
+        $resultList = $Query->getResult();
+        return $resultList;
     }
 
     /**

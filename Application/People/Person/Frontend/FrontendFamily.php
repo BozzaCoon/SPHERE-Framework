@@ -691,9 +691,14 @@ class FrontendFamily extends FrontendReadOnly
     public function getAddressContent($Ranking, $PersonIdList, $Data, $Errors, $hasAddButton = true)
     {
         $tblType = Address::useService()->getTypeAll();
-        list($AddressExtraList, $StreetNameList, $CountyList, $NationList, $CityList, $CodeList, $DistrictList) = Address::useService()->getAddressForAutoCompleter();
+        list($AddressExtraList, $StreetNameList, $CountyList, $CityList, $CodeList, $DistrictList) = Address::useService()->getAddressForAutoCompleter();
         $tblState = Address::useService()->getStateAll();
+        $tblCountryList = Address::useService()->getCountryAll();
         array_push($tblState, new TblState(''));
+        if(!isset($_POST['Data']['A1']['Country'])
+        && ($tblCountryGerman = Address::useService()->getCountryByName('Deutschland'))){
+            $_POST['Data']['A1']['Country'] = $tblCountryGerman->getId();
+        }
 
         $key = 'A' . $Ranking;
 
@@ -728,7 +733,7 @@ class FrontendFamily extends FrontendReadOnly
                     $this->getInputField('SelectBox', $key, 'State', 'Bundesland', '', false, $Errors, array('Name' => $tblState), new Map())
                 , 4),
                 new LayoutColumn(
-                    $this->getInputField('AutoCompleter', $key, 'Nation', 'Land', 'Land', false, $Errors, $NationList, new Map())
+                    $this->getInputField('SelectBox', $key, 'Country', 'Land', 'Land', true, $Errors, array('{{ Name }}' => $tblCountryList), new Map())
                 , 4),
             ))
         ))));

@@ -421,6 +421,16 @@ class Service extends AbstractService
     }
 
     /**
+     * @param TblPhone[] $tblPhoneList
+     * @return void
+     */
+    public function destroyPhoneBulk(array $tblPhoneList)
+    {
+
+        (new Data($this->getBinding()))->destroyPhoneBulk($tblPhoneList);
+    }
+
+    /**
      * @param $Name
      * @param $Description
      *
@@ -452,6 +462,14 @@ class Service extends AbstractService
     public function getPhoneToPersonAllEmergencyContactByPerson(TblPerson $tblPerson)
     {
         return (new Data($this->getBinding()))->getPhoneToPersonAllEmergencyContactByPerson($tblPerson);
+    }
+
+    /**
+     * @return false|TblPhone[]
+     */
+    public function getPhoneNotLinked()
+    {
+        return (new Data($this->getBinding()))->getPhoneNotLinked();
     }
 
     /**

@@ -37,7 +37,8 @@ class Setup extends AbstractSetup
         $tblCity = $this->setTableCity($Schema);
         $tblState = $this->setTableState($Schema);
         $this->setTableRegion($Schema);
-        $tblAddress = $this->setTableAddress($Schema, $tblCity, $tblState);
+        $tblCountry = $this->setTableCountry($Schema);
+        $tblAddress = $this->setTableAddress($Schema, $tblCity, $tblState, $tblCountry);
         $tblType = $this->setTableType($Schema);
         $this->setTableToPerson($Schema, $tblAddress, $tblType);
         $this->setTableToCompany($Schema, $tblAddress, $tblType);
@@ -127,12 +128,28 @@ class Setup extends AbstractSetup
 
     /**
      * @param Schema $Schema
-     * @param Table  $tblCity
-     * @param Table  $tblState
      *
      * @return Table
      */
-    private function setTableAddress(Schema &$Schema, Table $tblCity, Table $tblState)
+    private function setTableCountry(Schema &$Schema)
+    {
+
+        $Table = $this->createTable($Schema, 'tblCountry');
+        $this->createColumn($Table, 'Name', self::FIELD_TYPE_STRING);
+        $this->createColumn($Table, 'Extern', self::FIELD_TYPE_STRING);
+
+        return $Table;
+    }
+
+    /**
+     * @param Schema $Schema
+     * @param Table  $tblCity
+     * @param Table  $tblState
+     * @param Table  $tblCountry
+     *
+     * @return Table
+     */
+    private function setTableAddress(Schema &$Schema, Table $tblCity, Table $tblState, Table $tblCountry)
     {
 
         $Table = $this->createTable($Schema, 'tblAddress');
@@ -142,9 +159,13 @@ class Setup extends AbstractSetup
         $this->createColumn($Table, 'Region', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'County', self::FIELD_TYPE_STRING);
         $this->createColumn($Table, 'Nation', self::FIELD_TYPE_STRING);
+        if($this->hasColumn($Table, 'Nation')) {    // Todo Nach dem überspielen kann die Spalte weg.
+//            $Table->dropColumn('Nation');
+        }
         $this->createColumn($Table, 'AddressExtra', self::FIELD_TYPE_STRING);
         $this->getConnection()->addForeignKey($Table, $tblCity);
         $this->getConnection()->addForeignKey($Table, $tblState, true);
+        $this->getConnection()->addForeignKey($Table, $tblCountry, true);
         return $Table;
     }
 

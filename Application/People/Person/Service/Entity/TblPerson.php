@@ -35,6 +35,7 @@ class TblPerson extends Element
     const ATTR_SECOND_NAME = 'SecondName';
     const ATTR_LAST_NAME = 'LastName';
     const ATTR_IMPORT_ID = 'ImportId';
+    const ATTR_UUID = 'Uuid';
 
     /**
      * @Column(type="bigint")
@@ -68,6 +69,10 @@ class TblPerson extends Element
      * @Column(type="string")
      */
     protected $ImportId;
+    /**
+     * @Column(type="string")
+     */
+    protected $Uuid;
 
     /**
      * @return string (Salutation Title FirstName SecondName LastName)
@@ -234,6 +239,22 @@ class TblPerson extends Element
     {
 
         $this->ImportId = $ImportId;
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getUuid(): ?string
+    {
+        return $this->Uuid;
+    }
+
+    /**
+     * @param null|string $Uuid
+     */
+    public function setUuid(string $Uuid): void
+    {
+        $this->Uuid = $Uuid;
     }
 
     /**

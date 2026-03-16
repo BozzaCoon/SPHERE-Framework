@@ -1,6 +1,7 @@
 <?php
 namespace SPHERE\Application\People\Person\Service;
 
+use Doctrine\Entity;
 use Doctrine\ORM\AbstractQuery;
 use SPHERE\Application\Contact\Address\Address;
 use SPHERE\Application\Contact\Mail\Mail;
@@ -20,6 +21,7 @@ use SPHERE\Application\People\Person\Service\Entity\ViewPerson;
 use SPHERE\Application\People\Relationship\Relationship;
 use SPHERE\Application\Platform\System\Protocol\Protocol;
 use SPHERE\System\Database\Binding\AbstractData;
+use SPHERE\System\Database\Fitting\Element;
 use SPHERE\System\Database\Fitting\IdHydrator;
 
 /**
@@ -48,6 +50,15 @@ class Data extends AbstractData
         $this->createSalutation('Frau', true);
         $this->createSalutation('Schüler', true);
         $this->createSalutation('Schülerin', true);
+
+        /**
+         * Uuid für alle vorhandenen Personen setzen
+         */
+        if(($tblPersonList = $this->getPersonWithoutUuid())){
+            foreach($tblPersonList as $tblPerson){
+                $this->updatePersonUuid($tblPerson);
+            }
+        }
 
     }
 
@@ -100,6 +111,7 @@ class Data extends AbstractData
         $Entity->setLastName($LastName);
         $Entity->setBirthName($BirthName);
         $Entity->setImportId($ImportId);
+        $Entity->setUuId(Element::Uuid_v4());
         $Manager->saveEntity($Entity);
         Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
         return $Entity;
@@ -194,6 +206,26 @@ class Data extends AbstractData
             }
             $Manager->flushCache();
 //            Protocol::useService()->flushBulkEntries();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param TblPerson $tblPerson
+     * @return bool
+     */
+    private function updatePersonUuid(TblPerson $tblPerson): bool
+    {
+
+        $Manager = $this->getEntityManager();
+        /** @var TblPerson $Entity */
+        $Entity = $Manager->getEntityById('TblPerson', $tblPerson->getId());
+        $Protocol = clone $Entity;
+        if (null !== $Entity) {
+            $Entity->setUuid(Element::Uuid_v4());
+            $Manager->saveEntity($Entity);
+            Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(), $Protocol, $Entity);
             return true;
         }
         return false;
@@ -410,6 +442,19 @@ class Data extends AbstractData
         $result = $query->getResult();
 
         return $result;
+    }
+
+    /**
+     * @return false|TblPerson[]
+     * @throws \Exception
+     */
+    public function getPersonWithoutUuid()
+    {
+
+        return $this->getForceEntityListBy(__METHOD__, $this->getEntityManager(), 'TblPerson', array(
+            TblPerson::ATTR_UUID => null,
+            TblPerson::ENTITY_REMOVE => null
+        ));
     }
 
     /**

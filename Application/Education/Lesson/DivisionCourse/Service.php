@@ -953,6 +953,16 @@ class Service extends ServiceYearChange
     }
 
     /**
+     * @return false|TblDivisionCourse[]
+     * @throws \Exception
+     */
+    public function getDivisionCourseWithoutUuid()
+    {
+
+        return (new Data($this->getBinding()))->getDivisionCourseWithoutUuid();
+    }
+
+    /**
      * @param TblDivisionCourse $tblDivisionCourse
      * @param TblDivisionCourseMemberType $tblMemberType
      * @param TblPerson $tblPerson
@@ -1464,6 +1474,18 @@ class Service extends ServiceYearChange
         TblDivisionCourse $tblCoreGroup = null, bool $isLeaveDateNull = true)
     {
         return (new Data($this->getBinding()))->getStudentEducationListBy($tblYear, $tblSchoolType, $level, $tblDivision, $tblCoreGroup, $isLeaveDateNull);
+    }
+
+    /**
+     * @param TblYear $tblYear
+     * @param TblCompany $tblCompany
+     * @param TblType $tblSchoolType
+     *
+     * @return false|TblStudentEducation[]
+     */
+    public function getStudentEducationListByYearAndInstitutionAndType(TblYear $tblYear, TblCompany $tblCompany, TblType $tblSchoolType)
+    {
+        return (new Data($this->getBinding()))->getStudentEducationListByYearAndInstitutionAndType($tblYear, $tblCompany, $tblSchoolType);
     }
 
     /**

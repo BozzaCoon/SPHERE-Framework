@@ -32,6 +32,7 @@ class TblAddress extends Element
     const ATTR_ADDRESS_EXTRA = 'AddressExtra';
     const ATTR_TBL_CITY = 'tblCity';
     const ATTR_TBL_STATE = 'tblState';
+    const ATTR_TBL_COUNTRY = 'tblCountry';
 
     /**
      * @Column(type="string")
@@ -69,6 +70,10 @@ class TblAddress extends Element
      * @Column(type="bigint")
      */
     protected $tblState;
+    /**
+     * @Column(type="bigint")
+     */
+    protected $tblCountry;
 
     /**
      * @return string
@@ -208,6 +213,28 @@ class TblAddress extends Element
     {
 
         $this->tblCity = (null === $tblCity ? null : $tblCity->getId());
+    }
+
+    /**
+     * @return bool|TblCountry
+     */
+    public function getTblCountry(): bool|TblCountry
+    {
+
+        if (null === $this->tblCountry) {
+            return false;
+        } else {
+            return Address::useService()->getCountryById($this->tblCountry);
+        }
+    }
+
+    /**
+     * @param null|TblCountry $tblCountry
+     */
+    public function setTblCountry(TblCountry $tblCountry = null)
+    {
+
+        $this->tblCountry = (null === $tblCountry ? null : $tblCountry->getId());
     }
 
     /**
@@ -381,8 +408,8 @@ class TblAddress extends Element
         if ($this->getTblState()) {
             $result[] = $this->getTblState()->getName();
         }
-        if ($this->Nation !== '') {
-            $result[] = $this->Nation;
+        if (($tblCountry = $this->getTblCountry())) {
+            $result[] = $tblCountry->getName();
         }
 
         return empty($result) ? '' : implode(', ', $result);

@@ -1,19 +1,24 @@
 <?php
 namespace SPHERE\Application\Education;
 
+use SPHERE\Application\Api\People\Person;
 use SPHERE\Application\Education\Absence\Absence;
 use SPHERE\Application\Education\Certificate\Certificate;
 use SPHERE\Application\Education\ClassRegister\ClassRegister;
 use SPHERE\Application\Education\Diary\Diary;
 use SPHERE\Application\Education\Graduation\Graduation;
 use SPHERE\Application\Education\Integration\Integration;
+use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\Lesson;
 use SPHERE\Application\Education\School\School;
 use SPHERE\Application\IClusterInterface;
+use SPHERE\Application\People\Meta\Student\Student;
+use SPHERE\Application\Transfer\SaxSVS\Export\Export;
 use SPHERE\Common\Frontend\Icon\Repository\Education as EducationIcon;
 use SPHERE\Common\Main;
 use SPHERE\Common\Window\Navigation\Link;
 use SPHERE\Common\Window\Stage;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Education
@@ -50,6 +55,12 @@ class Education implements IClusterInterface
     {
 
         $Stage = new Stage('Dashboard', 'Bildung');
+
+//        $tblPerson = \SPHERE\Application\People\Person\Person::useService()->getPersonByName("Hazel1", "Akkermann");
+//        $tblStudentEducation = DivisionCourse::useService()->getStudentEducationByPersonAndDate($tblPerson);
+//        $Result = Export::useService()->getStudentJson($tblStudentEducation);
+//        $Result = Export::useService()->getCompleteJSON();
+//        $Result = json_encode($Result);
 
         return $Stage;
     }

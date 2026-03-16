@@ -83,6 +83,8 @@ class Setup extends AbstractSetup
         $this->createColumn($table, 'MigrateGroupId', self::FIELD_TYPE_BIGINT, true);
         $this->createColumn($table, 'MigrateSekCourse', self::FIELD_TYPE_STRING, true);
 
+        $this->createColumn($table, 'Uuid', self::FIELD_TYPE_STRING, true);
+
         $this->createForeignKey($table, $tblType);
 
         $this->createIndex($table, array('serviceTblYear'), false);

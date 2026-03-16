@@ -64,6 +64,18 @@ class Service extends AbstractService
     }
 
     /**
+     *  Array include:
+     *  [Id], // TblMail Id
+     *  [Mail]
+     * @return bool|TblMail[]
+     */
+    public function getMailNotLinked()
+    {
+
+        return (new Data($this->getBinding()))->getMailNotLinked();
+    }
+
+    /**
      * @return bool|TblType[]
      */
     public function getTypeAll()
@@ -643,6 +655,15 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->removeMailToCompany($tblToCompany);
+    }
+
+    /**
+     * @param TblMail[] $tblMailList
+     */
+    public function destroyMailBulk(array $tblMailList): void
+    {
+
+        (new Data($this->getBinding()))->destroyMailBulk($tblMailList);
     }
 
     /**

@@ -3,6 +3,7 @@ namespace SPHERE\Application\Contact\Address\Service;
 
 use SPHERE\Application\Contact\Address\Service\Entity\TblAddress;
 use SPHERE\Application\Contact\Address\Service\Entity\TblCity;
+use SPHERE\Application\Contact\Address\Service\Entity\TblCountry;
 use SPHERE\Application\Contact\Address\Service\Entity\TblRegion;
 use SPHERE\Application\Contact\Address\Service\Entity\TblState;
 use SPHERE\Application\Contact\Address\Service\Entity\TblToCompany;
@@ -109,6 +110,262 @@ class Data extends AbstractData
                 '13507', '13509', '13599', '13629'
             ));
         }
+        if(!$this->getCountryByName('Deutschland')){
+            $CountryList = array(
+                "000" => "Deutschland",
+                "112" => "Gibraltar (Britisches Überseegebiet)",
+                "113" => "Guernsey (Britisches Überseegebiet)",
+                "114" => "Jersey (Britisches Überseegebiet)",
+                "115" => "Insel Man (Britisches Überseegebiet)",
+                "116" => "Svalbard und Jan Mayen (u. a. Bäreninsel, Spitzbergen) (Norwegisches Überseegebiet)",
+                "121" => "Albanien",
+                "122" => "Bosnien und Herzegowina",
+                "123" => "Andorra",
+                "124" => "Belgien",
+                "125" => "Bulgarien",
+                "126" => "Dänemark",
+                "127" => "Estland",
+                "128" => "Finnland",
+                "129" => "Frankreich, einschl. Korsika",
+                "130" => "Kroatien",
+                "131" => "Slowenien",
+                "134" => "Griechenland",
+                "135" => "Irland",
+                "136" => "Island",
+                "137" => "Italien",
+                "139" => "Lettland",
+                "140" => "Montenegro",
+                "141" => "Liechtenstein",
+                "142" => "Litauen",
+                "143" => "Luxemburg",
+                "144" => "Nordmazedonien",
+                "145" => "Malta",
+                "146" => "Republik Moldau (Moldawien)",
+                "147" => "Monaco",
+                "148" => "Niederlande",
+                "149" => "Norwegen",
+                "150" => "Kosovo",
+                "151" => "Österreich",
+                "152" => "Polen",
+                "153" => "Portugal",
+                "154" => "Rumänien",
+                "155" => "Slowakei",
+                "156" => "San Marino",
+                "157" => "Schweden",
+                "158" => "Schweiz",
+                "160" => "Russland",
+                "161" => "Spanien",
+                "163" => "Türkei",
+                "164" => "Tschechien",
+                "165" => "Ungarn",
+                "166" => "Ukraine",
+                "167" => "Vatikanstadt",
+                "168" => "Vereinigtes Königreich (Großbritannien und Nordirland)",
+                "169" => "Belarus",
+                "170" => "Serbien",
+                "181" => "Zypern",
+                "182" => "Färöer (Dänisches Überseegebiet)",
+                "185" => "Britisches Überseegebiet außerhalb Europas",
+                "211" => "Mayotte (Französisches Überseegebiet)",
+                "214" => "Réunion (Französisches Überseegebiet)",
+                "216" => "Spanische Hoheitsplätze in Nordafrika (Spanisches Überseegebiet)",
+                "221" => "Algerien",
+                "223" => "Angola",
+                "224" => "Eritrea",
+                "225" => "Äthiopien",
+                "226" => "Lesotho",
+                "227" => "Botsuana",
+                "229" => "Benin",
+                "230" => "Dschibuti",
+                "231" => "Côte d`Ivoire",
+                "232" => "Nigeria",
+                "233" => "Simbabwe",
+                "236" => "Gabun",
+                "237" => "Gambia",
+                "238" => "Ghana",
+                "239" => "Mauretanien",
+                "242" => "Cabo Verde",
+                "243" => "Kenia",
+                "244" => "Komoren",
+                "245" => "Kongo, Republik",
+                "246" => "Kongo, Dem. Republik",
+                "247" => "Liberia",
+                "248" => "Libyen",
+                "249" => "Madagaskar",
+                "251" => "Mali",
+                "252" => "Marokko",
+                "253" => "Mauritius",
+                "254" => "Mosambik",
+                "255" => "Niger",
+                "256" => "Malawi",
+                "257" => "Sambia",
+                "258" => "Burkina Faso",
+                "259" => "Guinea-Bissau",
+                "261" => "Guinea",
+                "262" => "Kamerun",
+                "263" => "Südafrika",
+                "265" => "Ruanda",
+                "267" => "Namibia",
+                "268" => "São Tomé und Príncipe",
+                "269" => "Senegal",
+                "271" => "Seychellen",
+                "272" => "Sierra Leone",
+                "273" => "Somalia",
+                "274" => "Äquatorialguinea",
+                "277" => "Sudan",
+                "278" => "Südsudan",
+                "281" => "Eswatini (ehem. Swasiland)",
+                "282" => "Vereinigte Republik Tansania",
+                "283" => "Togo",
+                "284" => "Tschad",
+                "285" => "Tunesien",
+                "286" => "Uganda",
+                "287" => "Ägypten",
+                "289" => "Zentralafrikanische Republik",
+                "291" => "Burundi",
+                "311" => "Aruba (Niederländisches Überseegebiet)",
+                "315" => "Französisch-Guayana (Französisches Überseegebiet)",
+                "316" => "Amerikanische Jungferninseln (US-Überseegebiet)",
+                "317" => "Guadeloupe (Französisches Überseegebiet)",
+                "319" => "Martinique (Französisches Überseegebiet)",
+                "320" => "Antigua und Barbuda",
+                "321" => "Curaçao (Niederländisches Überseegebiet)",
+                "322" => "Barbados",
+                "323" => "Argentinien",
+                "324" => "Bahamas",
+                "325" => "Puerto Rico (US-Überseegebiet)",
+                "326" => "Bolivien",
+                "327" => "Brasilien",
+                "328" => "Guyana",
+                "329" => "St. Barthélemy (Französisches Überseegebiet)",
+                "330" => "Belize",
+                "331" => "St. Martin (französischer Teil) (Französisches Überseegebiet)",
+                "332" => "Chile",
+                "333" => "Dominica",
+                "334" => "Costa Rica",
+                "335" => "Dominikanische Republik",
+                "336" => "Ecuador, einschl. Galapagos-Inseln",
+                "337" => "El Salvador",
+                "338" => "St. Pierre und Miquelon (Französisches Überseegebiet)",
+                "340" => "Grenada",
+                "341" => "St. Martin (niederländischer Teil) (Niederländisches Überseegebiet)",
+                "342" => "Grönland (Dänisches Überseegebiet)",
+                "343" => "Navassa (US-Überseegebiet)",
+                "344" => "Bonaire, Saba, St. Eustatius (Niederländisches Überseegebiet)",
+                "345" => "Guatemala",
+                "346" => "Haiti",
+                "347" => "Honduras",
+                "348" => "Kanada",
+                "349" => "Kolumbien",
+                "351" => "Kuba",
+                "352" => "Clipperton (Französisches Überseegebiet)",
+                "353" => "Mexiko",
+                "354" => "Nicaragua",
+                "355" => "Jamaika",
+                "357" => "Panama",
+                "359" => "Paraguay",
+                "361" => "Peru",
+                "364" => "Suriname",
+                "365" => "Uruguay",
+                "366" => "St. Lucia",
+                "367" => "Venezuela",
+                "368" => "Vereinigte Staaten (von Amerika), auch USA",
+                "369" => "St. Vincent und die Grenadinen",
+                "370" => "St. Kitts und Nevis",
+                "371" => "Trinidad und Tobago",
+                "411" => "Hongkong",
+                "412" => "Macau",
+                "421" => "Jemen",
+                "422" => "Armenien",
+                "423" => "Afghanistan",
+                "424" => "Bahrain",
+                "425" => "Aserbaidschan",
+                "426" => "Bhutan",
+                "427" => "Myanmar",
+                "429" => "Brunei Darussalam",
+                "430" => "Georgien",
+                "431" => "Sri Lanka",
+                "432" => "Vietnam",
+                "434" => "Dem. Volksrepublik Korea",
+                "436" => "Indien, einschl. Sikkim und Gôa",
+                "437" => "Indonesien, einschl. Irian Jaya",
+                "438" => "Irak",
+                "439" => "Iran, Islamische Republik",
+                "441" => "Israel",
+                "442" => "Japan",
+                "444" => "Kasachstan",
+                "445" => "Jordanien",
+                "446" => "Kambodscha",
+                "447" => "Katar",
+                "448" => "Kuwait",
+                "449" => "Dem. Volksrepublik Laos",
+                "450" => "Kirgisistan",
+                "451" => "Libanon",
+                "454" => "Malediven",
+                "456" => "Oman",
+                "457" => "Mongolei",
+                "458" => "Nepal",
+                "459" => "Palästinensische Gebiete",
+                "460" => "Bangladesch",
+                "461" => "Pakistan",
+                "462" => "Philippinen",
+                "465" => "Taiwan",
+                "467" => "Republik Korea, auch Süd-Korea",
+                "469" => "Vereinigte Arabische Emirate",
+                "470" => "Tadschikistan",
+                "471" => "Turkmenistan",
+                "472" => "Saudi-Arabien",
+                "474" => "Singapur",
+                "475" => "Arabische Republik Syrien",
+                "476" => "Thailand",
+                "477" => "Usbekistan",
+                "479" => "China",
+                "482" => "Malaysia",
+                "483" => "Timor-Leste",
+                "499" => "Übriges Asien",
+                "510" => "Heard und McDonaldinseln (Australisches Überseegebiet)",
+                "511" => "Korallenmeerinseln (Australisches Überseegebiet)",
+                "512" => "Kokosinseln (Australisches Überseegebiet)",
+                "513" => "Neukaledonien (Französisches Überseegebiet)",
+                "514" => "Nördliche Marianen (US-Überseegebiet)",
+                "515" => "Norfolkinsel (Australisches Überseegebiet)",
+                "517" => "Amerikanisch-Samoa (US-Überseegebiet)",
+                "519" => "Tokelau (Neuseeländisches Überseegebiet)",
+                "520" => "Wallis und Futuna (Französisches Überseegebiet)",
+                "521" => "Weihnachtsinsel (Australisches Überseegebiet)",
+                "522" => "Bouvetinsel (Norwegisches Überseegebiet)",
+                "523" => "Australien",
+                "524" => "Salomonen",
+                "525" => "Ashmore- und Cartierinseln (Australisches Überseegebiet)",
+                "526" => "Fidschi",
+                "527" => "Cookinseln",
+                "528" => "Französisch-Polynesien (Französisches Überseegebiet)",
+                "529" => "Guam (US-Überseegebiet)",
+                "530" => "Kiribati",
+                "531" => "Nauru",
+                "532" => "Vánúatú",
+                "533" => "Niue",
+                "534" => "Kleinere Amerikanische Überseeinseln (US-Überseegebiet)",
+                "535" => "Norwegisches Antarktis-Territorium (Norwegisches Überseegebiet)",
+                "536" => "Neuseeland",
+                "537" => "Palau",
+                "538" => "Papua-Neuguinea",
+                "540" => "Tuvalu",
+                "541" => "Tonga",
+                "542" => "Französische Süd- und Antarktisgebiete (Französisches Überseegebiet)",
+                "543" => "Samoa, auch Westsamoa",
+                "544" => "Marschallinseln",
+                "545" => "Föderierte Staaten von Mikronesien",
+                "546" => "Antarktis, Chilenische (Chilenisches Überseegebiet)",
+                "547" => "Australisches Antarktis-Territorium (Australisches Überseegebiet)",
+                "548" => "Argentinische Antarktis (Argentinisches Überseegebiet)",
+                "549" => "Neuseeländische Antarktis: Ross-Nebengebiet (Neuseeländisches Überseegebiet)",
+                "996" => "Staatenlos",
+                "997" => "Ungeklärt",
+                "998" => "Keine Angabe"
+            );
+            $this->createCountryByList($CountryList);
+        }
     }
 
     /**
@@ -201,6 +458,32 @@ class Data extends AbstractData
     }
 
     /**
+     * @param array $CountryList // z.B. array("000" => "Deutschland")
+     *
+     * return void
+     */
+    public function createCountryByList(array $CountryList): void
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        foreach($CountryList as $Extern => $Name){
+            $Entity = $Manager->getEntity('TblCountry')->findOneBy(array(
+                TblCountry::ATTR_NAME => $Name,
+                TblCountry::ATTR_EXTERN => $Extern,
+            ));
+            if (null === $Entity) {
+                $Entity = new TblCountry();
+                $Entity->setName($Name);
+                $Entity->setExtern($Extern);
+                $Manager->bulkSaveEntity($Entity);
+                Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity, true);
+            }
+        }
+        $Manager->flushCache();
+        Protocol::useService()->flushBulkEntries();
+    }
+
+    /**
      * @param integer $Id
      *
      * @return bool|TblState
@@ -263,6 +546,17 @@ class Data extends AbstractData
     /**
      * @param integer $Id
      *
+     * @return bool|TblCountry
+     */
+    public function getCountryById($Id): bool|TblCountry
+    {
+
+        return $this->getCachedEntityById(__METHOD__, $this->getConnection()->getEntityManager(), 'TblCountry', $Id);
+    }
+
+    /**
+     * @param integer $Id
+     *
      * @return bool|TblAddress
      */
     public function getAddressById($Id)
@@ -287,6 +581,15 @@ class Data extends AbstractData
     {
 
         return $this->getCachedEntityList(__METHOD__, $this->getConnection()->getEntityManager(), 'TblState');
+    }
+
+    /**
+     * @return bool|TblCountry[]
+     */
+    public function getCountryAll()
+    {
+
+        return $this->getCachedEntityList(__METHOD__, $this->getConnection()->getEntityManager(), 'TblCountry');
     }
 
     /**
@@ -317,6 +620,51 @@ class Data extends AbstractData
     }
 
     /**
+     *  Array include:
+     *  [Id], // TblAddress Id
+     *  [StreetName],
+     *  [StreetNumber],
+     *  [PostOfficeBox],
+     *  [County],
+     *  [Nation],
+     *  [Region],
+     *  [AddressExtra],
+     *  [Code],
+     *  [CityName],
+     *  [District]
+     *  [StateName]
+     *  [CountryName]
+     * @return bool|TblAddress[]
+     */
+    public function getAddressNotLinked()
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+
+        $Builder = $Manager->getQueryBuilder();
+        $tblAddress = new TblAddress();
+        $tblToPerson = new TblToPerson();
+        $tblToCompany = new TblToCompany();
+        $tblCity = new TblCity();
+        $tblState = new TblState('');
+        $tblCountry = new TblCountry();
+
+        $Query = $Builder->select('tA.Id, tA.StreetName, tA.StreetNumber, tA.PostOfficeBox, tA.County, tA.Nation, tA.Region, tA.AddressExtra, tC.Code, tC.Name as CityName, tC.District, tS.Name as StateName, tCo.Name as CountryName')
+            ->from($tblAddress->getEntityFullName(), 'tA')
+            ->leftJoin($tblCity->getEntityFullName(), 'tC', 'WITH', 'tC.Id = tA.tblCity')
+            ->leftJoin($tblState->getEntityFullName(), 'tS', 'WITH', 'tS.Id = tA.tblState')
+            ->leftJoin($tblCountry->getEntityFullName(), 'tCo', 'WITH', 'tCo.Id = tA.tblCountry')
+            ->leftJoin($tblToPerson->getEntityFullName(), 'tTP', 'WITH', 'tTP.tblAddress = tA.Id')
+            ->leftJoin($tblToCompany->getEntityFullName(), 'tTC', 'WITH', 'tTC.tblAddress = tA.Id')
+            ->where($Builder->expr()->isNull('tTP.Id'))
+            ->andWhere($Builder->expr()->isNull('tTC.Id'))
+            ->getQuery();
+
+        $resultList = $Query->getResult();
+        return $resultList;
+    }
+
+    /**
      * Array include:
      * [StreetName],
      * [County],
@@ -336,7 +684,7 @@ class Data extends AbstractData
         $tblToPerson = new TblToPerson();
         $tblAddress = new TblAddress();
         $tblCity = new TblCity();
-        $Query = $Builder->select('tA.AddressExtra, tA.StreetName, tA.County, tA.Nation, tC.Code, tC.Name, tC.District')
+        $Query = $Builder->select('tA.AddressExtra, tA.StreetName, tA.County, tC.Code, tC.Name, tC.District')
             ->from($tblToPerson->getEntityFullName(), 'tTP')
             ->leftJoin($tblAddress->getEntityFullName(), 'tA', 'WITH', 'tA.Id = tTP.tblAddress')
             ->leftJoin($tblCity->getEntityFullName(), 'tC', 'WITH', 'tC.Id = tA.tblCity')
@@ -347,6 +695,34 @@ class Data extends AbstractData
         $resultList = $Query->getResult();
         return $resultList;
 
+    }
+
+    /**
+     * @param string $Name
+     *
+     * @return bool|TblCountry
+     */
+    public function getCountryByName($Name)
+    {
+
+        return $this->getCachedEntityBy(__METHOD__, $this->getConnection()->getEntityManager(), 'TblCountry',
+            array(
+                TblCountry::ATTR_NAME => $Name
+            ));
+    }
+
+    /**
+     * @param string $Extern
+     *
+     * @return bool|TblCountry
+     */
+    public function getCountryByExtern($Extern)
+    {
+
+        return $this->getCachedEntityBy(__METHOD__, $this->getConnection()->getEntityManager(), 'TblCountry',
+            array(
+                TblCountry::ATTR_EXTERN => $Extern
+            ));
     }
 
     /**
@@ -390,15 +766,16 @@ class Data extends AbstractData
     }
 
     /**
-     * @param TblState $tblState
-     * @param TblCity  $tblCity
-     * @param string   $StreetName
-     * @param string   $StreetNumber
-     * @param string   $PostOfficeBox
-     * @param string   $Region
-     * @param string   $County
-     * @param string   $Nation
-     * @param string   $AddressExtra
+     * @param ?TblState   $tblState
+     * @param TblCity     $tblCity
+     * @param string      $StreetName
+     * @param string      $StreetNumber
+     * @param string      $PostOfficeBox
+     * @param string      $Region
+     * @param string      $County
+     * @param string      $Nation // try to convert string into tblCountry if tblCountry is empty
+     * @param string      $AddressExtra
+     * @param ?TblCountry $tblCountry
      *
      * @return TblAddress
      */
@@ -412,7 +789,16 @@ class Data extends AbstractData
         string $County = '',
         string $Nation = '',
         string $AddressExtra = '',
+        TblCountry $tblCountry = null
     ) {
+
+        // Try to match Country by Nation
+        if($Nation && $tblCountry === null){
+            $tblCountry = $this->getCountryByName($Nation);
+            if(!$tblCountry){
+                $tblCountry = null;
+            }
+        }
 
         $Manager = $this->getConnection()->getEntityManager();
         $tblAddressList = $Manager->getEntity('TblAddress')
@@ -426,6 +812,7 @@ class Data extends AbstractData
                 TblAddress::ATTR_COUNTY          => $County,
                 TblAddress::ATTR_NATION          => $Nation,
                 TblAddress::ATTR_ADDRESS_EXTRA   => $AddressExtra,
+                TblAddress::ATTR_TBL_COUNTRY     => $tblCountry,
             ));
 
         // SSW-533 Entity-Manager ignoriert die Groß- und Kleinschreibung
@@ -434,7 +821,8 @@ class Data extends AbstractData
             foreach ($tblAddressList as $tblAddress) {
                 if ($tblAddress->getStreetName() == $StreetName
                     && $tblAddress->getCounty() == $County
-                    && $tblAddress->getNation() == $Nation
+//                    && $tblAddress->getNation() == $Nation
+                    && $tblAddress->getTblCountry() == $tblCountry
                 ) {
                     return $tblAddress;
                 }
@@ -451,6 +839,7 @@ class Data extends AbstractData
         $Entity->setCounty($County);
         $Entity->setNation($Nation);
         $Entity->setAddressExtra($AddressExtra);
+        $Entity->setTblCountry($tblCountry);
         $Manager->saveEntity($Entity);
         Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
 
@@ -830,6 +1219,31 @@ class Data extends AbstractData
     }
 
     /**
+     * @param TblAddress $tblAddress
+     * @param ?TblCountry $tblCountry
+     *
+     * @return bool
+     */
+    public function updateAddressCountry(TblAddress $tblAddress,TblCountry $tblCountry = null): bool
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+
+        $Entity = $Manager->getEntityById('TblAddress', $tblAddress->getId());
+//        $Protocol = clone $Entity;
+        if (null !== $Entity) {
+            $Entity->setTblCountry($tblCountry);
+            $Manager->saveEntity($Entity);
+            // no Protocol necessary
+//          Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(),
+//              $Protocol,
+//              $Entity);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * @param TblToPerson $tblToPerson
      * @param             $tblAddress
      * @param             $tblType
@@ -936,6 +1350,23 @@ class Data extends AbstractData
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param TblAddress[] $tblAddressList
+     * @return void
+     */
+    public function destroyAddressBulk(array $tblAddressList): void
+    {
+
+        $Manager = $this->getConnection()->getEntityManager();
+        /** @var TblAddress $tblAddress */
+        foreach($tblAddressList as $tblAddress){
+            Protocol::useService()->createDeleteEntry($this->getConnection()->getDatabase(), $tblAddress, true);
+            $Manager->bulkKillEntity($tblAddress);
+        }
+        $Manager->flushCache();
+        Protocol::useService()->flushBulkEntries();
     }
 
     /**

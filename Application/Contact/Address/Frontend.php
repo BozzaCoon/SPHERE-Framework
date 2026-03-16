@@ -6,6 +6,7 @@ use SPHERE\Application\Api\Contact\ApiAddressToPerson;
 use SPHERE\Application\Api\Contact\ApiContactDetails;
 use SPHERE\Application\Contact\Address\Service\Entity\TblAddress;
 use SPHERE\Application\Contact\Address\Service\Entity\TblCity;
+use SPHERE\Application\Contact\Address\Service\Entity\TblCountry;
 use SPHERE\Application\Contact\Address\Service\Entity\TblState;
 use SPHERE\Application\Contact\Address\Service\Entity\TblToPerson;
 use SPHERE\Application\Corporation\Company\Service\Entity\TblCompany;
@@ -38,6 +39,8 @@ use SPHERE\Common\Frontend\IFrontendInterface;
 use SPHERE\Common\Frontend\Layout\Repository\Container;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
 use SPHERE\Common\Frontend\Layout\Repository\PullRight;
+use SPHERE\Common\Frontend\Layout\Repository\Well;
+use SPHERE\Common\Frontend\Layout\Repository\WellReadOnly;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutColumn;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutGroup;
@@ -50,6 +53,7 @@ use SPHERE\Common\Frontend\Text\Repository\Italic;
 use SPHERE\Common\Frontend\Text\Repository\Muted;
 use SPHERE\Common\Frontend\Text\Repository\Small;
 use SPHERE\System\Extension\Extension;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Frontend
@@ -89,29 +93,32 @@ class Frontend extends Extension implements IFrontendInterface
         $tblOnlineContact = $OnlineContactId ? OnlineContactDetails::useService()->getOnlineContactById($OnlineContactId) : false;
 
         if ($ToPersonId && ($tblToPerson = Address::useService()->getAddressToPersonById($ToPersonId))) {
+
+            if ($isOnlineContactPosted) {
+                $tblAddress = $tblOnlineContact->getServiceTblContact();
+            } else {
+                $tblAddress =  $tblToPerson->getTblAddress();
+            }
             // beim Checken der Inputfeldern darf der Post nicht gesetzt werden
             if ($setPost) {
                 $Global = $this->getGlobal();
                 $Global->POST['Type']['Type'] = $tblToPerson->getTblType()->getId();
                 $Global->POST['Type']['Remark'] = $tblToPerson->getRemark();
-
-                if ($isOnlineContactPosted) {
-                    $tblAddress = $tblOnlineContact->getServiceTblContact();
-                } else {
-                    $tblAddress =  $tblToPerson->getTblAddress();
-                }
                 $Global->POST['Street']['Name'] = $tblAddress->getStreetName();
                 $Global->POST['Street']['Number'] = $tblAddress->getStreetNumber();
                 $Global->POST['City']['Code'] = $tblAddress->getTblCity()->getCode();
                 $Global->POST['City']['Name'] = $tblAddress->getTblCity()->getName();
                 $Global->POST['City']['District'] = $tblAddress->getTblCity()->getDistrict();
 
-                if ($tblToPerson->getTblAddress()->getTblState()) {
-                    $Global->POST['State'] = $tblToPerson->getTblAddress()->getTblState()->getId();
-                }
+//                if ($tblToPerson->getTblAddress()->getTblState()) {
+//                    $Global->POST['State'] = $tblToPerson->getTblAddress()->getTblState()->getId();
+//                }
                 $Global->POST['Region'] = $tblAddress->getRegion();
                 $Global->POST['County'] = $tblAddress->getCounty();
                 $Global->POST['Nation'] = $tblAddress->getNation();
+                if($tblAddress->getTblCountry()){
+                    $Global->POST['Country'] = $tblAddress->getTblCountry()->getId();
+                }
                 $Global->POST['AddressExtra'] = $tblAddress->getAddressExtra();
 
                 $Global->savePost();
@@ -131,9 +138,19 @@ class Frontend extends Extension implements IFrontendInterface
             }
         }
 
-        list($AddressExtraList, $StreetNameList, $CountyList, $NationList, $CityList, $CodeList, $DistrictList) = Address::useService()->getAddressForAutoCompleter();
+        $Global = $this->getGlobal();
+
+        // neue Adressen Deutschland voreintragen
+        if((!isset($tblAddress) || $tblOnlineContact)
+        && ($tblCountryGerman = Address::useService()->getCountryByName('Deutschland'))){
+            $Global->POST['Country'] = $tblCountryGerman->getId();
+        }
+        $Global->savePost();
+        list($AddressExtraList, $StreetNameList, $CountyList, $CityList, $CodeList, $DistrictList) = Address::useService()->getAddressForAutoCompleter();
+        $tblCountryList = Address::useService()->getCountryAll();
         $tblState = Address::useService()->getStateAll();
         array_push($tblState, new TblState(''));
+
         $tblType = Address::useService()->getTypeAll();
 
         if ($ToPersonId) {
@@ -160,8 +177,10 @@ class Frontend extends Extension implements IFrontendInterface
         $centerPanelContent[] = (new AutoCompleter('City[Name]', 'Ort', 'Ort', $CityList, new MapMarker()))->setRequired();
         $centerPanelContent[] = new AutoCompleter('City[District]', 'Ortsteil', 'Ortsteil', $DistrictList, new MapMarker());
         $centerPanelContent[] = new AutoCompleter('County', 'Landkreis', 'Landkreis', $CountyList, new Map());
-        $centerPanelContent[] = new SelectBox('State', 'Bundesland', array('Name' => $tblState), new Map());
-        $centerPanelContent[] = new AutoCompleter('Nation', 'Land', 'Land', $NationList, new Map());
+//        $centerPanelContent[] = new SelectBox('State', 'Bundesland', array('{{ Name }}' => $tblState));
+////        $centerPanelContent[] = new AutoCompleter('Nation', 'Land', 'Land', $NationList, new Map());
+//        $centerPanelContent[] = new SelectBox('Country', 'Land1', array('{{ Name }}' => $tblCountryList));
+
         $centerPanel = new Panel('Stadt', $centerPanelContent, Panel::PANEL_TYPE_INFO);
 
         if($setPost && isset($tblToPerson) && $tblToPerson && isset($tblAddress)){
@@ -175,6 +194,8 @@ class Frontend extends Extension implements IFrontendInterface
                 $rightPanelContent[] = new AutoCompleter('Region', 'Bezirk', implode(', ', $RegionList), array('Name' => $tblRegionAll), new Map());
             }
         }
+        $rightPanelContent[] = new SelectBox('State', 'Bundesland', array('{{ Name }}' => $tblState));
+        $rightPanelContent[] = (new SelectBox('Country', 'Land', array('{{ Name }}' => $tblCountryList)))->setRequired();
         $rightPanelContent[] = new TextArea('Type[Remark]', 'Bemerkungen', 'Bemerkungen', new Edit());
         $rightPanel = new Panel('Sonstiges', $rightPanelContent, Panel::PANEL_TYPE_INFO);
 

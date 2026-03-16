@@ -33,6 +33,8 @@ class TblDivisionCourse extends Element
     const ATTR_MIGRATE_GROUP_ID = 'MigrateGroupId';
     const ATTR_MIGRATE_SEK_COURSE = 'MigrateSekCourse';
 
+    const ATTR_UUID = 'Uuid';
+
     /**
      * muss null sein für SelectBox
      *
@@ -86,6 +88,11 @@ class TblDivisionCourse extends Element
      * @Column(type="string")
      */
     protected ?string $MigrateSekCourse = null;
+
+    /**
+     * @Column(type="string")
+     */
+    protected ?string $Uuid = null;
 
     /**
      * @param TblDivisionCourseType $tblType
@@ -270,6 +277,22 @@ class TblDivisionCourse extends Element
     public function setIsDigital(bool $isDigital): void
     {
         $this->IsDigital = $isDigital;
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getUuid(): ?string
+    {
+        return $this->Uuid;
+    }
+
+    /**
+     * @param null|string $Uuid
+     */
+    public function setUuid(string $Uuid): void
+    {
+        $this->Uuid = $Uuid;
     }
 
     /**

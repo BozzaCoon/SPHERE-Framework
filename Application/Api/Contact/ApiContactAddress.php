@@ -5,6 +5,7 @@ namespace SPHERE\Application\Api\Contact;
 use SPHERE\Application\Api\ApiTrait;
 use SPHERE\Application\Api\Dispatcher;
 use SPHERE\Application\Contact\Address\Address;
+use SPHERE\Application\Contact\Address\Service\Entity\TblCountry;
 use SPHERE\Application\Contact\Address\Service\Entity\TblState;
 use SPHERE\Application\Education\Certificate\Generator\Repository\Element\Ruler;
 use SPHERE\Application\IApiInterface;
@@ -41,6 +42,7 @@ use SPHERE\Common\Frontend\Message\Repository\Success as SuccessMessage;
 use SPHERE\Common\Frontend\Message\Repository\Warning as WarningMessage;
 use SPHERE\Common\Frontend\Text\Repository\Bold;
 use SPHERE\System\Extension\Extension;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class ApiContactAddress
@@ -175,6 +177,10 @@ class ApiContactAddress extends Extension implements IApiInterface
             $Global->POST['Street']['Name'] = $tblAddress->getStreetName();
             $Global->POST['County'] = $tblAddress->getCounty();
             $Global->POST['Nation'] = $tblAddress->getNation();
+            if($tblAddress->getTblCountry()){
+                $Global->POST['Country'] = $tblAddress->getTblCountry();
+            }
+
             $Global->POST['AddressExtra'] = $tblAddress->getAddressExtra();
             if ($tblState) {
                 $Global->POST['State'] = $tblState->getId();
@@ -212,6 +218,8 @@ class ApiContactAddress extends Extension implements IApiInterface
         $tblCity = Address::useService()->getCityAll();
         $tblState = Address::useService()->getStateAll();
         array_push($tblState, new TblState(''));
+        $tblCountryList = Address::useService()->getCountryAll();
+//        array_push($tblCountryList, new TblCountry());
         $tblType = Address::useService()->getTypeByName('Hauptadresse');
 
         return (new Form(
@@ -236,25 +244,18 @@ class ApiContactAddress extends Extension implements IApiInterface
                             (new AutoCompleter('City[Code]', 'Postleitzahl', 'Postleitzahl',
                                 array('Code' => $tblCity), new MapMarker()
                             ))->setRequired(),
-                            (new AutoCompleter('City[Name]', 'Ort', 'Ort',
-                                array('Name' => $tblCity), new MapMarker()
+                            (new AutoCompleter('City[Name]', 'Ort', 'Ort', array('Name' => $tblCity), new MapMarker()
                             ))->setRequired(),
-                            new AutoCompleter('City[District]', 'Ortsteil', 'Ortsteil',
-                                array('District' => $tblCity), new MapMarker()
-                            ),
-                            new AutoCompleter('County', 'Landkreis', 'Landkreis',
-                                array('County' => $tblAddress), new Map()
-                            ),
-                            new SelectBox('State', 'Bundesland',
-                                array('Name' => $tblState), new Map()
-                            ),
-                            new AutoCompleter('Nation', 'Land', 'Land',
-                                array('Nation' => $tblAddress), new Map()
-                            ),
+                            new AutoCompleter('City[District]', 'Ortsteil', 'Ortsteil', array('District' => $tblCity), new MapMarker()),
+                            new AutoCompleter('County', 'Landkreis', 'Landkreis', array('County' => $tblAddress), new Map()),
+//                            new AutoCompleter('Nation', 'Land', 'Land', array('Nation' => $tblAddress), new Map()),
+
                         ), Panel::PANEL_TYPE_INFO)
                         , 4),
                     new FormColumn(
                         new Panel('Sonstiges', array(
+                            new SelectBox('State', 'Bundesland', array('Name' => $tblState)),
+                            (new SelectBox('Country', 'Land', array('{{ Name }}' => $tblCountryList)))->setRequired(),
                             new TextArea('Type[Remark]', 'Bemerkungen', 'Bemerkungen', new Edit())
                         ), Panel::PANEL_TYPE_INFO)
                         , 4),
@@ -274,12 +275,12 @@ class ApiContactAddress extends Extension implements IApiInterface
      * @param array  $City
      * @param string $County
      * @param int    $State
-     * @param string $Nation
+     * @param string $Country
      * @param string $AddressExtra
      *
      * @return Layout|String
      */
-    public function saveModal($PersonId, $Type, $Street, $City, $County, $State, $Nation, $AddressExtra)
+    public function saveModal($PersonId, $Type, $Street, $City, $County, $State, $Country, $AddressExtra)
     {
 
         $tblType = Address::useService()->getTypeByName('Hauptadresse');
@@ -290,7 +291,7 @@ class ApiContactAddress extends Extension implements IApiInterface
         }
 
         $tblPerson = Person::useService()->getPersonById($PersonId);
-        if ($form = $this->checkInputAddress($PersonId, $Street, $City)) {
+        if ($form = $this->checkInputAddress($PersonId, $Street, $City, $Country)) {
             // display Errors on form
             $Global = $this->getGlobal();
             $tblType = Address::useService()->getTypeByName('Hauptadresse');
@@ -299,7 +300,7 @@ class ApiContactAddress extends Extension implements IApiInterface
             return new Well($form);
         }
         // do service
-        if (Address::useService()->createAddressToPersonByApi($tblPerson, $Street, $City, $State, $Type, $County, $Nation, $AddressExtra)) {
+        if (Address::useService()->createAddressToPersonByApi($tblPerson, $Street, $City, $State, $Type, $County, $Country, $AddressExtra)) {
             return new SuccessMessage('Adresse wurde erfolgreich gespeichert.').self::pipelineClose($PersonId);
         }
 
@@ -310,10 +311,11 @@ class ApiContactAddress extends Extension implements IApiInterface
      * @param int   $PersonId
      * @param array $Street
      * @param array $City
+     * @param string $Country
      *
      * @return false|string|Form
      */
-    private function checkInputAddress($PersonId, $Street = array(), $City = array())
+    private function checkInputAddress($PersonId, $Street = array(), $City = array(), $Country = '')
     {
         $Error = false;
         $form = $this->formAddress($PersonId);
@@ -332,6 +334,10 @@ class ApiContactAddress extends Extension implements IApiInterface
         }
         if (isset($City['Name']) && empty($City['Name'])) {
             $form->setError('City[Name]', 'Bitte geben Sie einen Namen ein');
+            $Error = true;
+        }
+        if (isset($Country) && empty($Country)) {
+            $form->setError('Country', 'Bitte geben Sie ein Land an');
             $Error = true;
         }
 

@@ -84,6 +84,16 @@ class DataMaintenance extends Extension implements IModuleInterface
                 __NAMESPACE__.'/Frontend::frontendAllConsumers'
             )
         );
+        Main::getDispatcher()->registerRoute(
+            Main::getDispatcher()->createRoute(__NAMESPACE__.'/AddressCountryUpdate',
+                __NAMESPACE__.'/Frontend::frontendAddressCountryUpdate'
+            )
+        );
+        Main::getDispatcher()->registerRoute(
+            Main::getDispatcher()->createRoute(__NAMESPACE__.'/AddressCleanup',
+                __NAMESPACE__.'/Frontend::frontendAddressCleanup'
+            )
+        );
     }
 
     /**

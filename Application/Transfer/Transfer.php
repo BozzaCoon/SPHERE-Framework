@@ -7,6 +7,7 @@ use SPHERE\Application\Transfer\Export\Export;
 use SPHERE\Application\Transfer\Import\Import;
 use SPHERE\Application\Transfer\Indiware\Import\Replacement\Replacement;
 use SPHERE\Application\Transfer\Indiware\Indiware;
+use SPHERE\Application\Transfer\SaxSVS\SaxSVS;
 use SPHERE\Application\Transfer\Untis\Untis;
 use SPHERE\Common\Main;
 use SPHERE\Common\Window\Navigation\Link;
@@ -28,6 +29,7 @@ class Transfer implements IClusterInterface
         Untis::registerApplication();
         Indiware::registerApplication();
         Education::registerApplication();
+        SaxSVS::registerApplication();
 
         Main::getDisplay()->addClusterNavigation(
             new Link(new Link\Route(__NAMESPACE__), new Link\Name('Datentransfer'))

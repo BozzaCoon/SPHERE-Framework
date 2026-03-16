@@ -552,24 +552,24 @@ class ApiAddressToPerson  extends Extension implements IApiInterface
      * @param $State
      * @param $Type
      * @param $County
-     * @param $Nation
+     * @param $Country
      * @param $Relationship
      *
      * @return bool|\SPHERE\Common\Frontend\Form\Structure\Form|Danger|string
      */
-    public function saveCreateAddressToPersonModal($PersonId, $OnlineContactId, $Street, $City, $State, $Type, $County, $Nation, $Relationship, $AddressExtra)
+    public function saveCreateAddressToPersonModal($PersonId, $OnlineContactId, $Street, $City, $State, $Type, $County, $Country, $Relationship, $AddressExtra)
     {
 
         if (!($tblPerson = Person::useService()->getPersonById($PersonId))) {
             return new Danger('Die Person wurde nicht gefunden', new Exclamation());
         }
 
-        if (($form = Address::useService()->checkFormAddressToPerson($tblPerson, $Street, $City, $Type, $OnlineContactId))) {
+        if (($form = Address::useService()->checkFormAddressToPerson($tblPerson, $Street, $City, $Type, $Country, $OnlineContactId))) {
             // display Errors on form
             return $this->getAddressToPersonModal($form, $tblPerson, null, $OnlineContactId);
         }
 
-        if (Address::useService()->createAddressToPersonByApi($tblPerson, $Street, $City, $State, $Type, $County, $Nation, $AddressExtra)) {
+        if (Address::useService()->createAddressToPersonByApi($tblPerson, $Street, $City, $State, $Type, $County, $Country, $AddressExtra)) {
             $tblOnlineContact = OnlineContactDetails::useService()->getOnlineContactById($OnlineContactId);
 
             // Adresse für die ausgewählten Beziehungen speichern
@@ -644,7 +644,8 @@ class ApiAddressToPerson  extends Extension implements IApiInterface
      * @param $State
      * @param $Type
      * @param $County
-     * @param $Nation
+//     * @param $Nation
+     * @param $Country
      * @param $Relationship
      * @param $OnlineContactId
      * @param string $Region
@@ -652,7 +653,7 @@ class ApiAddressToPerson  extends Extension implements IApiInterface
      *
      * @return Danger|string
      */
-    public function saveEditAddressToPersonModal($PersonId, $ToPersonId, $Street, $City, $State, $Type, $County, $Nation, $Relationship, $OnlineContactId, $Region = '', $AddressExtra = '')
+    public function saveEditAddressToPersonModal($PersonId, $ToPersonId, $Street, $City, $State, $Type, $County, $Country, $Relationship, $OnlineContactId, $Region = '', $AddressExtra = '')
     {
 
         if (!($tblPerson = Person::useService()->getPersonById($PersonId))) {
@@ -663,12 +664,12 @@ class ApiAddressToPerson  extends Extension implements IApiInterface
             return new Danger('Die Adresse wurde nicht gefunden', new Exclamation());
         }
 
-        if (($form = Address::useService()->checkFormAddressToPerson($tblPerson, $Street, $City, $Type, $OnlineContactId, $tblToPerson))) {
+        if (($form = Address::useService()->checkFormAddressToPerson($tblPerson, $Street, $City, $Type, $Country, $OnlineContactId, $tblToPerson))) {
             // display Errors on form
             return $this->getAddressToPersonModal($form, $tblPerson, $ToPersonId, $OnlineContactId);
         }
 
-        if (Address::useService()->updateAddressToPersonByApi($tblToPerson, $Street, $City, $State, $Type, $Region, $County, $Nation, $AddressExtra)) {
+        if (Address::useService()->updateAddressToPersonByApi($tblToPerson, $Street, $City, $State, $Type, $Region, $County, $Country, $AddressExtra)) {
             $tblOnlineContact = OnlineContactDetails::useService()->getOnlineContactById($OnlineContactId);
 
             // Adresse für die ausgewählten Beziehungen speichern
@@ -693,7 +694,7 @@ class ApiAddressToPerson  extends Extension implements IApiInterface
                                 $Type,
                                 $Region,
                                 $County,
-                                $Nation,
+                                $Country,
                                 $AddressExtra
                             );
                             // neue Hauptadresse anlegen
@@ -705,7 +706,7 @@ class ApiAddressToPerson  extends Extension implements IApiInterface
                                 $State,
                                 $Type,
                                 $County,
-                                $Nation,
+                                $Country,
                                 $AddressExtra
                             );
                         }

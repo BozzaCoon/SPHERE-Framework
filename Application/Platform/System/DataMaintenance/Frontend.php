@@ -1,8 +1,11 @@
 <?php
 namespace SPHERE\Application\Platform\System\DataMaintenance;
 
+use Piwik\Plugins\UserCountry\Columns\Country;
 use SPHERE\Application\Api\Platform\DataMaintenance\ApiConsumerLogin;
 use SPHERE\Application\Contact\Address\Address;
+use SPHERE\Application\Contact\Mail\Mail;
+use SPHERE\Application\Contact\Phone\Phone;
 use SPHERE\Application\Document\Storage\Storage;
 use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\Term\Service\Entity\TblYear;
@@ -61,6 +64,7 @@ use SPHERE\Common\Frontend\Table\Structure\TableData;
 use SPHERE\Common\Frontend\Text\Repository\Bold;
 use SPHERE\Common\Frontend\Text\Repository\Center;
 use SPHERE\Common\Frontend\Text\Repository\Code;
+use SPHERE\Common\Frontend\Text\Repository\Danger as DangerText;
 use SPHERE\Common\Frontend\Text\Repository\ToolTip;
 use SPHERE\Common\Window\Redirect;
 use SPHERE\Common\Window\RedirectScript;
@@ -135,6 +139,14 @@ class Frontend extends Extension implements IFrontendInterface
                     // Dateien (Zeugnisse) nachträglich initial einstellen
 //                        new Standard('Datei-Größe setzen für alte Dateien', __NAMESPACE__.'/DocumentStorage/FileSize').
                             new Standard('Datei-Größe aller Mandanten einsehen', __NAMESPACE__.'/DocumentStorage/AllConsumers'), Panel::PANEL_TYPE_INFO)
+                ), 4),
+            new LayoutColumn(array(
+                new Panel(new Bold('Adresse von Nation zu tblCountry umwandeln'),
+                            new Standard('Starten', __NAMESPACE__.'/AddressCountryUpdate'), Panel::PANEL_TYPE_WARNING)
+                ), 4),
+            new LayoutColumn(array(
+                new Panel(new Bold('Alte Adressen entfernen'),
+                            new Standard('&nbsp;Ansicht', __NAMESPACE__.'/AddressCleanup', new EyeOpen()), Panel::PANEL_TYPE_INFO)
                 ), 4),
 //            new LayoutColumn(array(
 //                new TitleLayout('Zensuren/Noten'),
@@ -959,4 +971,259 @@ UPDATE ".$Acronym."_SettingConsumer.tblUserAccount SET UpdateDate = date_add(Upd
 ////        );
 ////        return $Stage;
 //    }
+
+    public function frontendAddressCountryUpdate()
+    {
+
+        $Stage = new Stage('Nation To Country');
+        $Stage->addButton(new Standard('Zurück', __NAMESPACE__, new ChevronLeft()));
+
+        $tblAddressAll = Address::useService()->getAddressAll();
+//        $tblAddressAll = array_slice($tblAddressAll, 0, 20); // Lokale Begrenzung zum testen
+        $CountAddress = count($tblAddressAll);
+        $tblCountryDe = Address::useService()->getCountryByName('Deutschland');
+        $tableUnchanged = $tableUpdate = array();
+        $countApiRequest = 0;
+        $PLZde = $PLZunMatch = array();
+        foreach($tblAddressAll as $tblAddress){
+            $item = array();
+            $item['Adresse'] = $tblAddress->getGuiString();
+            $item['Nation'] = $tblAddress->getNation();
+            $item['PLZControl'] = '';
+            $item['Country'] = '';
+            $item['Extern'] = '';
+            // Adressen ohne tblCountry über Nation füllen
+            if(($Nation = $tblAddress->getNation())
+            && !$tblAddress->getTblCountry()
+            && ($tblCountry = Address::useService()->getCountryByName($Nation))){
+                // Nation kann in tblCountry ermittelt werden:
+                $item['Country'] = $tblCountry->getName();
+                $item['Extern'] = $tblCountry->getExtern();
+                // Update Ausführen
+                Address::useService()->updateAddressCountry($tblAddress, $tblCountry);
+                array_push($tableUpdate, $item);
+                continue;
+            }
+
+            // Vorhandenes prüfen und für die Tabelle setzen
+            if(($tblCountry = $tblAddress->getTblCountry())){
+                $item['Country'] = $tblCountry->getName();
+                $item['Extern'] = $tblCountry->getExtern();
+                if(($tblCity = $tblAddress->getTblCity()) && ($PLZ = $tblCity->getCode()) && $tblCountry->getName() == 'Deutschland' && !in_array($PLZ, $PLZde)){
+                    $PLZde[] = $PLZ;
+                }
+            }
+
+            // Addressen über PLZ versuchen auf Deutsch zu prüfen und füllen
+            if(!$tblCountry && ($tblCity = $tblAddress->getTblCity()) && ($PLZ = $tblCity->getCode())){
+                if(in_array($PLZ, $PLZde)){
+                    Address::useService()->updateAddressCountry($tblAddress, $tblCountryDe);
+                    $item['Country'] = $tblCountryDe->getName();
+                    $item['Extern'] = $tblCountryDe->getExtern();
+                    $item['PLZControl'] = $PLZ;
+                    array_push($tableUpdate, $item);
+                    continue;
+                } else {
+                    // Kontrolle Temp PLZ die keine erneute Prüfung brauchen
+                    if(!in_array($PLZ, $PLZunMatch)){
+                        if(preg_match('/^\d{5}$/', $PLZ)) {
+                            $item['PLZControl'] = $PLZ;
+                            // Request an API
+                            $countApiRequest++;
+                            if($this->isValidGermanPlz($PLZ)){
+                                // PLZ ist gültig für Deutschland
+                                Address::useService()->updateAddressCountry($tblAddress, $tblCountryDe);
+                                $item['Country'] = $tblCountryDe->getName();
+                                $item['Extern'] = $tblCountryDe->getExtern();
+                                $PLZde[] = $PLZ;
+                                array_push($tableUpdate, $item);
+                                continue;
+                            } else {
+                                // temp save nicht gefundener PLZ
+                                $PLZunMatch[] = $PLZ;
+                            }
+                        } else {
+                            // PLZ weicht von deutscher norm ab
+                            $PLZunMatch[] = $PLZ;
+                        }
+                    }
+                }
+            }
+
+            array_push($tableUnchanged, $item);
+        }
+
+        $Stage->setContent(new Layout(new LayoutGroup(new LayoutRow(array(
+            new LayoutColumn(new Info('Logik:'
+            .new Container('* '.new DangerText(new Exclamation()).' Vorhandene tblCountry Verbindungen werden nicht erneut angefasst.')
+            .new Container('* ist eine Nation hinterlegt, wird diese anhand des Namens versucht mit der Grundtabelle von SaxSVS zu vergleichen. Diese ist in [Mandant]_ContactAddress.tblCountry hinterlegt.')
+            .new Container('* Als nächstes wird die PLZ der Adresse verwendet um über eine Externe API zu prüfen, ob dies eine valide deutsche PLZ ist und bei einem Treffer wird dieser Adresse "Deutschland" hinterlegt.')
+            .new Container('Bereits hinterlegte deutsche Adressen werden ohne API-Anfrage als Grundlage zur Erkennung deutscher PLZ gesetzt.')
+            .new Container('Bei der durchführung wurden '.$countApiRequest.' API anfragen an openplzapi.org geschikt')
+            .new Container('Anzahl Deutscher PLZ: '.count($PLZde))
+            .new Container('Anzahl nicht Deutscher PLZ: '.count($PLZunMatch))
+            )),
+            new LayoutColumn('Anzahl vorhandener Adressen: '.$CountAddress),
+            new LayoutColumn(new TableData($tableUpdate, new Title('Adressen Anzahl Updates ('.count($tableUpdate).') mit '.$countApiRequest.' Api Abfragen'), array(
+                'Adresse' => 'Adresse',
+                'Nation' => 'Nation',
+                'PLZControl' => 'PLZ Kontrolle',
+                'Country' => 'Gefunden in tblCountry (Neu)',
+                'Extern' => 'Extern Nummer (Neu)',
+            ))),
+            new LayoutColumn(new TableData($tableUnchanged, new Title('Unveränderte Adressen ('.count($tableUnchanged).')'), array(
+                'Adresse' => 'Adresse',
+                'Nation' => 'Nation',
+                'PLZControl' => 'PLZ Kontrolle',
+                'Country' => 'Gefunden in tblCountry',
+                'Extern' => 'Extern Nummer',
+            ))),
+        )))));
+
+        return $Stage;
+    }
+
+    /**
+     * @param string $plz
+     * @return array
+     */
+    function isValidGermanPlz(string $plz): array {
+        $url = "https://openplzapi.org/de/Localities?postalCode={$plz}";
+
+        // nur lokal ohne verify
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+        $json = file_get_contents($url, false, $context);
+//        $json = file_get_contents($url); // funktioniert im KW Netz nicht
+        $data = json_decode($json, true);
+
+        return $data;
+    }
+
+    /**
+     * @param bool $delete
+     * @return Stage
+     */
+    public function frontendAddressCleanup(bool $Delete = false): Stage
+    {
+
+        $Stage = new Stage('Adressen', 'aufräumen');
+        $Stage->addButton(new Standard('Zurück', __NAMESPACE__, new ChevronLeft()));
+        $Stage->addButton(new DangerLink('Löschen', __NAMESPACE__.'/AddressCleanup', new Remove(), array('Delete' => 1)));
+        $tableContent = $tableContentMail = $tableContentPhone = array();
+        $tblAddressDeleteList = $tblMailDeleteList = $tblPhoneDeleteList = array();
+        $ResultList = Address::useService()->getAddressNotLinked();
+        foreach($ResultList as $Result){
+            if($Delete){
+                if(($tblAddress = Address::useService()->getAddressById($Result['Id']))){
+                    $tblAddressDeleteList[] = $tblAddress;
+                    $tableContent[] = $Result;
+                }
+            } else {
+                $tableContent[] = $Result;
+            }
+        }
+        $ResultMailList = Mail::useService()->getMailNotLinked();
+        foreach($ResultMailList as $ResultMail){
+            $tableContentMail[] = $ResultMail;
+            if($Delete){
+                if(($tblMail = Mail::useService()->getMailById($ResultMail['Id']))){
+                    $tblMailDeleteList[] = $tblMail;
+                }
+            }
+        }
+        $ResultPhoneList = Phone::useService()->getPhoneNotLinked();
+        foreach($ResultPhoneList as $ResultPhone){
+            $tableContentPhone[] = $ResultPhone;
+            if($Delete){
+                if(($tblPhone = Phone::useService()->getPhoneById($ResultPhone['Id']))){
+                    $tblPhoneDeleteList[] = $tblPhone;
+                }
+            }
+        }
+
+        if(!empty($tblAddressDeleteList) || !empty($tblMailDeleteList) || !empty($tblPhoneDeleteList)){
+            if($Delete){
+                if($tblAddressDeleteList){
+                    Address::useService()->destroyAddressBulk($tblAddressDeleteList);
+                }
+                if($tblMailDeleteList){
+                    Mail::useService()->destroyMailBulk($tblMailDeleteList);
+                }
+                if($tblPhoneDeleteList){
+                    Phone::useService()->destroyPhoneBulk($tblPhoneDeleteList);
+                }
+            }
+        }
+
+        if($Delete){
+            $Stage->setContent(
+                new Layout(new LayoutGroup(new LayoutRow(new LayoutColumn(
+                    new Success('Daten wurden erfolgreich gelöscht')
+                    .new Redirect('/Platform/System/DataMaintenance/AddressCleanup', Redirect::TIMEOUT_SUCCESS)
+                ))))
+            );
+            return $Stage;
+        }
+
+        $Stage->setContent(new Layout(new LayoutGroup(new LayoutRow(array(
+            new LayoutColumn(new Info('Logik:'
+            .new Container('* Adressen, die keine Verknüpfung mehr haben.')
+            .new Container('* E-Mail, die keine Verknüpfung mehr haben.')
+            .new Container('* Telefonnummern, die keine Verknüpfung mehr haben.')
+                .new Container('* '.new Bold('Softremoved').' Einträge wie zum beispiel gelöschte Personen, haben eine aktive Verknüpfung und die jeweiligen
+                 Daten werden dabei '.new Bold('nicht gelöscht111').'.')
+            )),
+            new LayoutColumn((!empty($tableContent)
+            ? new TableData($tableContent, new Title('Adressen ohne Personenbezug'), array(
+//                'Id' => '',
+                'StreetName' => 'Straße',
+                'StreetNumber' => 'Str. Nr',
+                'PostOfficeBox' => 'PostBox',
+                'County' => 'Landkreis',
+                'Nation' => '"ehemalig Land',
+                'Region' => 'Bezirk',
+                'AddressExtra' => 'Adresszusatz',
+                'Code' => 'PLZ',
+                'CityName' => 'Ort',
+                'District' => 'Ortsteil',
+                'StateName' => 'Bundesland',
+                'CountryName' => 'Land',
+            ), array(
+                'order' => array(
+                    array(8, 'asc'),
+                ),
+                'pageLength' => 5,
+
+            ))
+            : new Success('keine verwaisten Adressen'))),
+            new LayoutColumn((!empty($tableContentMail)
+            ? new TableData($tableContentMail, new Title('E-Mails ohne Personenbezug'), array(
+                'Address' => 'E-Mail',
+            ), array(
+                'order' => array(
+                    array(0, 'asc'),
+                ),
+                'pageLength' => 10,
+
+            ))
+                : new Success('keine verwaisten E-Mails')), 6),
+            new LayoutColumn((!empty($tableContentPhone)
+                ? new TableData($tableContentPhone, new Title('Telefonnummern ohne Personenbezug'), array(
+                'Number' => 'Tel. Number',
+            ), array(
+                'order' => array(
+                    array(0, 'asc'),
+                ),
+                'pageLength' => 10,
+            ))
+                : new Success('keine verwaisten Telefonnummern')), 6),
+        )))));
+
+        return $Stage;
+    }
 }

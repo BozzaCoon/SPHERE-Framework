@@ -152,4 +152,23 @@ class TblYear extends Element
 
         return $this->endDate;
     }
+
+    /**
+     * @return string YYYY/YYYY
+     */
+    public function getYearFullString()
+    {
+
+        // Teilen des Strings
+        [$startYear, $shortEnd] = explode('/', $this->getName());
+        // Jahrhundert vom Startjahr übernehmen
+        $century = intdiv((int)$startYear, 100) * 100;
+        // Endjahr zusammensetzen
+        $endYear = $century + (int)$shortEnd;
+        // Falls Jahreswechsel über das Jahrhundert (z. B. 1999/00)
+        if ($endYear <= (int)$startYear) {
+            $endYear += 100;
+        }
+        return $startYear . '/' . $endYear;
+    }
 }
