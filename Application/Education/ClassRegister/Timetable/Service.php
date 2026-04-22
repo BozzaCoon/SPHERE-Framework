@@ -11,6 +11,7 @@ use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimet
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacement;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableNode;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacementLog;
+use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableReplacementPut;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Entity\TblTimetableWeek;
 use SPHERE\Application\Education\ClassRegister\Timetable\Service\Setup;
 use SPHERE\Application\Education\Graduation\Grade\Grade;
@@ -28,7 +29,6 @@ use SPHERE\Common\Frontend\Form\Structure\Form;
 use SPHERE\Common\Frontend\Icon\Repository\ChevronLeft;
 use SPHERE\Common\Frontend\Icon\Repository\ChevronRight;
 use SPHERE\Common\Frontend\Icon\Repository\Extern;
-use SPHERE\Common\Frontend\Icon\Repository\Pen;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
 use SPHERE\Common\Frontend\Layout\Structure\Layout;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutColumn;
@@ -42,6 +42,7 @@ use SPHERE\Common\Frontend\Text\Repository\Bold;
 use SPHERE\Common\Frontend\Text\Repository\Center;
 use SPHERE\Common\Window\Redirect;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class Service
@@ -176,6 +177,24 @@ class Service extends AbstractService
     {
 
         return (new Data($this->getBinding()))->getTimetableReplacementLogAll($isForced);
+    }
+
+    /**
+     * @return TblTimetableReplacementPut[]|null
+     */
+    public function getTimetableReplacementPutAll($isForced = false)
+    {
+
+        return (new Data($this->getBinding()))->getTimetableReplacementPutAll($isForced);
+    }
+
+    /**
+     * @return TblTimetableReplacementPut|null
+     */
+    public function getTimetableReplacementPutLast()
+    {
+
+        return (new Data($this->getBinding()))->getTimetableReplacementPutLast();
     }
 
     /**
@@ -344,6 +363,26 @@ class Service extends AbstractService
 
         (new Data($this->getBinding()))->destroyTimetableReplacementLogAllBulk();
         return (new Data($this->getBinding()))->createTimetableReplacementLogEntity($Message);
+    }
+
+    /**
+     * @param string $json
+     * @return void
+     */
+    public function createTimetableReplacementPut($json): void
+    {
+
+        // limitieren auf 10
+        if(($tblTimetableReplacementPutAll = $this->getTimetableReplacementPutAll())
+            && $tblTimetableReplacementPutAll
+            && count($tblTimetableReplacementPutAll) >= 10){
+            $tblTimetableReplacementPut =  end($tblTimetableReplacementPutAll);
+            if($tblTimetableReplacementPut){
+                $this->removeTimetableReplacementPut($tblTimetableReplacementPut);
+            }
+        }
+
+        (new Data($this->getBinding()))->createTimetableReplacementPut($json);
     }
 
     /**
@@ -746,6 +785,16 @@ class Service extends AbstractService
                     $item->setHour($tblTimetableReplacement->getHour());
 
                     $resultList[] = $item;
+                    // Änderung aus Indiware kommt ohne vertretungsfach, muss aber auch mit angezeigt werden
+                } elseif(!$tblTimetableReplacement->getIsCanceled() && $tblTimetableReplacement->getServiceTblSubject()) {
+
+                    $item = new TblTimetableNode();
+                    $item->setServiceTblCourse($tblTimetableReplacement->getServiceTblCourse() ?: null);
+                    $item->setServiceTblSubject($tblTimetableReplacement->getServiceTblSubject());
+                    $item->setRoom($tblTimetableReplacement->getRoom());
+                    $item->setHour($tblTimetableReplacement->getHour());
+
+                    $resultList[] = $item;
                 }
             }
         }
@@ -931,6 +980,15 @@ class Service extends AbstractService
     public function destroyTimetableReplacementLogBulk(): bool
     {
         return (new Data($this->getBinding()))->destroyTimetableReplacementLogBulk();
+    }
+
+    /**
+     * @param TblTimetableReplacementPut $tblTimetableReplacementPut
+     * @return void
+     */
+    public function removeTimetableReplacementPut(TblTimetableReplacementPut $tblTimetableReplacementPut): void
+    {
+        (new Data($this->getBinding()))->removeTimetableReplacementPut($tblTimetableReplacementPut);
     }
 
     /**
