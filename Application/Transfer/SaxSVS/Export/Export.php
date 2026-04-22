@@ -73,6 +73,7 @@ class Export implements IModuleInterface
         $tblSchoolType = Type::useService()->getTypeById($SchoolTypeId);
         if($tblCompany && $tblSchoolType){
             $Test = Export::useService()->getCompleteJsonByCompanyAndType($tblCompany, $tblSchoolType);
+            dump($Test);
 //            Debugger::devDump($JSON);
         }
 

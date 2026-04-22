@@ -9,7 +9,9 @@ use SPHERE\Application\People\Meta\Common\Service\Entity\TblCommonGender;
 use SPHERE\Application\People\Relationship\Relationship;
 use SPHERE\Application\People\Relationship\Service\Entity\TblType;
 use SPHERE\Application\Setting\Consumer\School\School;
+use SPHERE\Application\Transfer\SaxSVS\Export\Service\Data;
 use SPHERE\System\Database\Binding\AbstractService;
+use SPHERE\Application\Transfer\SaxSVS\Export\Service\Setup;
 
 /**
  * Class Service
@@ -72,9 +74,12 @@ class Service extends AbstractService
                 'classes' => $DivisionList,
                 'students' => $StudentList,
             );
+
+            //ToDO erstmal result ausgegeben
+            return $result;
         }
 
-        dump($StudentList);
+//        dump($StudentList);
 //        $result = json_encode($result);
 //        dump($result);
 

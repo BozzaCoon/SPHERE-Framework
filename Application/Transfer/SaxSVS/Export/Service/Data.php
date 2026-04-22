@@ -1,34 +1,18 @@
 <?php
-namespace SPHERE\Application\People\Person\Service;
+namespace SPHERE\Application\Transfer\SaxSVS\Export\Service;
 
 use Doctrine\Entity;
 use Doctrine\ORM\AbstractQuery;
-use SPHERE\Application\Contact\Address\Address;
-use SPHERE\Application\Contact\Mail\Mail;
-use SPHERE\Application\Contact\Phone\Phone;
-use SPHERE\Application\Education\Absence\Absence;
-use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
-use SPHERE\Application\People\Group\Group;
-use SPHERE\Application\People\Meta\Club\Club;
-use SPHERE\Application\People\Meta\Common\Common;
-use SPHERE\Application\People\Meta\Custody\Custody;
-use SPHERE\Application\People\Meta\Prospect\Prospect;
-use SPHERE\Application\People\Meta\Student\Student;
-use SPHERE\Application\People\Meta\Teacher\Teacher;
 use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\People\Person\Service\Entity\TblSalutation;
-use SPHERE\Application\People\Person\Service\Entity\ViewPerson;
-use SPHERE\Application\People\Relationship\Relationship;
 use SPHERE\Application\Platform\System\Protocol\Protocol;
 use SPHERE\Application\Transfer\SaxSVS\Export\Service\Entity\TblTransferSax;
 use SPHERE\System\Database\Binding\AbstractData;
-use SPHERE\System\Database\Fitting\Element;
-use SPHERE\System\Database\Fitting\IdHydrator;
 
 /**
  * Class Data
  *
- * @package SPHERE\Application\People\Person\Service
+ * @package SPHERE\Application\Transfer\SaxSVS\Export\Service
  */
 class Data extends AbstractData
 {
