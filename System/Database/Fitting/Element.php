@@ -264,7 +264,10 @@ abstract class Element extends Extension
         return $Value;
     }
 
-    public static function Uuid_v4(): string
+    /**
+     * @return string UUID v4 (RFC 4122)
+     */
+    public static function uuidV4(): string
     {
 
         $data = random_bytes(16);

@@ -21,7 +21,6 @@ use SPHERE\Application\Platform\System\Protocol\Protocol;
 use SPHERE\System\Database\Fitting\ColumnHydrator;
 use SPHERE\System\Database\Fitting\Element;
 use SPHERE\System\Extension\Extension;
-use SPHERE\System\Extension\Repository\Debugger;
 
 class Data extends DataTeacher
 {
@@ -167,7 +166,7 @@ class Data extends DataTeacher
         if($Entity === null) {
             $Entity = TblDivisionCourse::withParameter($tblType, $tblYear, $name, $description, $isShownInPersonData, $isReporting, $tblSubject);
             $Entity->setIsDigital($isDigital);
-            $Entity->setUuId(Element::Uuid_v4());
+            $Entity->setUuid(Element::uuidV4());
 
             $Manager->saveEntity($Entity);
             Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
@@ -223,7 +222,7 @@ class Data extends DataTeacher
         $Entity = $Manager->getEntityById('TblDivisionCourse', $tblDivisionCourse->getId());
         $Protocol = clone $Entity;
         if (null !== $Entity) {
-            $Entity->setUuid(Element::Uuid_v4());
+            $Entity->setUuid(Element::uuidV4());
             $Manager->saveEntity($Entity);
             Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(), $Protocol, $Entity);
             return true;

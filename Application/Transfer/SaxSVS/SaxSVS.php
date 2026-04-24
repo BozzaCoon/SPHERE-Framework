@@ -6,15 +6,10 @@ use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblStudentEducation;
 use SPHERE\Application\Education\Lesson\Term\Term;
 use SPHERE\Application\IApplicationInterface;
-use SPHERE\Application\People\Meta\Common\Common;
 use SPHERE\Application\Setting\Consumer\School\School;
 use SPHERE\Application\Transfer\SaxSVS\Export\Export;
 use SPHERE\Common\Frontend\Table\Structure\TableData;
-use SPHERE\Common\Main;
-use SPHERE\Common\Window\Navigation\Link;
 use SPHERE\Common\Window\Stage;
-use SPHERE\System\Database\Fitting\Element;
-use SPHERE\System\Extension\Repository\Debugger;
 
 /**
  * Class SaxSVS
@@ -42,8 +37,6 @@ class SaxSVS implements IApplicationInterface
     {
 
         $Stage = new Stage('SaxSVS', 'Datentransfer');
-
-//        Debugger::devDump(Element::Uuid_v4());
 
         return $Stage;
     }

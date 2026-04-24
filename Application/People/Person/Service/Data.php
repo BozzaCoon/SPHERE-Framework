@@ -1,7 +1,6 @@
 <?php
 namespace SPHERE\Application\People\Person\Service;
 
-use Doctrine\Entity;
 use Doctrine\ORM\AbstractQuery;
 use SPHERE\Application\Contact\Address\Address;
 use SPHERE\Application\Contact\Mail\Mail;
@@ -111,7 +110,7 @@ class Data extends AbstractData
         $Entity->setLastName($LastName);
         $Entity->setBirthName($BirthName);
         $Entity->setImportId($ImportId);
-        $Entity->setUuId(Element::Uuid_v4());
+        $Entity->setUuid(Element::uuidV4());
         $Manager->saveEntity($Entity);
         Protocol::useService()->createInsertEntry($this->getConnection()->getDatabase(), $Entity);
         return $Entity;
@@ -223,7 +222,7 @@ class Data extends AbstractData
         $Entity = $Manager->getEntityById('TblPerson', $tblPerson->getId());
         $Protocol = clone $Entity;
         if (null !== $Entity) {
-            $Entity->setUuid(Element::Uuid_v4());
+            $Entity->setUuid(Element::uuidV4());
             $Manager->saveEntity($Entity);
             Protocol::useService()->createUpdateEntry($this->getConnection()->getDatabase(), $Protocol, $Entity);
             return true;
