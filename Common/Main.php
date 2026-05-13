@@ -31,6 +31,7 @@ use SPHERE\Application\Transfer\Transfer;
 use SPHERE\Common\Frontend\Icon\Repository\HazardSign;
 use SPHERE\Common\Frontend\Icon\Repository\Hospital;
 use SPHERE\Common\Frontend\Icon\Repository\Info;
+use SPHERE\Common\Frontend\Icon\Repository\Listing;
 use SPHERE\Common\Frontend\Icon\Repository\Shield;
 use SPHERE\Common\Frontend\Icon\Repository\Success;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
@@ -204,6 +205,20 @@ class Main extends Extension
          * GUI-API
          */
         if (preg_match('!^/Api/!is', $this->getRequest()->getPathInfo())) {
+
+            // Fehler die "SyntaxError: Unexpected non-whitespace character after JSON" ausführen sollen ausgegeben werden.
+            $startupError = error_get_last();
+            if ($startupError && ($startupError['type'] & (E_ERROR | E_CORE_ERROR | E_COMPILE_ERROR | E_WARNING | E_CORE_WARNING))) {
+                $location = ($startupError['file'] !== 'Unknown' && $startupError['line'] > 0)
+                    ? '<br/><small>' . htmlspecialchars($startupError['file']) . ':' . $startupError['line'] . '</small>'
+                    : '';
+                echo json_encode(
+                    '<div class="alert alert-danger"><b>PHP-Fehler:</b> '
+                    . htmlspecialchars($startupError['message'])
+                    . $location . '</div>'
+                );
+                exit(0);
+            }
 
             try {
                 $this->getDebugger();
