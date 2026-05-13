@@ -31,7 +31,6 @@ use SPHERE\Application\Transfer\Transfer;
 use SPHERE\Common\Frontend\Icon\Repository\HazardSign;
 use SPHERE\Common\Frontend\Icon\Repository\Hospital;
 use SPHERE\Common\Frontend\Icon\Repository\Info;
-use SPHERE\Common\Frontend\Icon\Repository\Listing;
 use SPHERE\Common\Frontend\Icon\Repository\Shield;
 use SPHERE\Common\Frontend\Icon\Repository\Success;
 use SPHERE\Common\Frontend\Layout\Repository\Panel;
