@@ -67,33 +67,33 @@ class FuxSchool implements IModuleInterface
     }
 
     /**
-     * @return Layout
-     * @throws \MOC\V\Core\FileSystem\Exception\FileSystemException
+     * @return LayoutColumn[]
      */
     public static function getDownloadLayout()
     {
 
-        return new Layout(new LayoutGroup(new LayoutRow(array(
-            new LayoutColumn(new Thumbnail(
-                FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
-                'FuxSchool', 'Institutionendaten (Einrichtungsdaten)',
-                (new Standard('', '/Transfer/Import/FuxMedia/Company', new Upload(), array(), 'Upload')) // ->setDisabled()
-            ), 2),
-            new LayoutColumn(new Thumbnail(
-                FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
-                'FuxSchool', 'Lehrerdaten',
-                (new Standard('', '/Transfer/Import/FuxMedia/Teacher', new Upload(), array(), 'Upload')) // ->setDisabled()
-            ), 2),
-            new LayoutColumn(new Thumbnail(
-                FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
-                'FuxSchool', 'Klassendaten',
-                (new Standard('', '/Transfer/Import/FuxMedia/Division', new Upload(), array(), 'Upload')) // ->setDisabled()
-            ), 2),
-            new LayoutColumn(new Thumbnail(
-                FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
-                'FuxSchool', 'Schülerdaten',
-                (new Standard('', '/Transfer/Import/FuxMedia/Student', new Upload(), array(), 'Upload')) // ->setDisabled()
-            ), 2),
-        ))));
+        $ColumnList = array();
+        $ColumnList[] = new LayoutColumn(new Thumbnail(
+            FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
+            'FuxSchool', 'Institutionendaten (Einrichtungsdaten)',
+            (new Standard('', '/Transfer/Import/FuxMedia/Company', new Upload(), array(), 'Upload')) // ->setDisabled()
+        ), 2);
+        $ColumnList[] = new LayoutColumn(new Thumbnail(
+            FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
+            'FuxSchool', 'Lehrerdaten',
+            (new Standard('', '/Transfer/Import/FuxMedia/Teacher', new Upload(), array(), 'Upload')) // ->setDisabled()
+        ), 2);
+        $ColumnList[] = new LayoutColumn(new Thumbnail(
+            FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
+            'FuxSchool', 'Klassendaten',
+            (new Standard('', '/Transfer/Import/FuxMedia/Division', new Upload(), array(), 'Upload')) // ->setDisabled()
+        ), 2);
+        $ColumnList[] = new LayoutColumn(new Thumbnail(
+            FileSystem::getFileLoader('/Common/Style/Resource/fuxschool.gif'),
+            'FuxSchool', 'Schülerdaten',
+            (new Standard('', '/Transfer/Import/FuxMedia/Student', new Upload(), array(), 'Upload')) // ->setDisabled()
+        ), 2);
+
+        return $ColumnList;
     }
 }

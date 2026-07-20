@@ -1,6 +1,8 @@
 <?php
 namespace SPHERE\Application\Transfer\Import;
+
 use SPHERE\Application\IApplicationInterface;
+use SPHERE\Application\Transfer\Import\Atlantis\ImportAtlantis;
 use SPHERE\Application\Transfer\Import\FuxMedia\FuxSchool;
 use SPHERE\Application\Transfer\Import\Standard\ImportStandard;
 use SPHERE\Application\Transfer\Import\Standard\Mail\Mail;
@@ -28,6 +30,7 @@ class Import implements IApplicationInterface
         FuxSchool::registerModule();
         ImportStandard::registerModule();
         Mail::registerModule();
+        ImportAtlantis::registerModule();
 
         Main::getDisplay()->addApplicationNavigation(
             new Link(new Link\Route(__NAMESPACE__), new Link\Name('Daten importieren'))
@@ -48,10 +51,9 @@ class Import implements IApplicationInterface
             new Bold('<H3>Standard Import</H3>')
             .new Layout(new LayoutGroup(array(
                 new LayoutRow(ImportStandard::getStandardLink()),
-                new LayoutRow(new LayoutColumn(
-                    new Ruler()
-                    .FuxSchool::getDownloadLayout()
-                ))
+                new LayoutRow(new LayoutColumn(new Ruler())),
+                new LayoutRow(FuxSchool::getDownloadLayout()),
+                new LayoutRow(ImportAtlantis::getAtlantisLink())
             )))
         );
         return $Stage;

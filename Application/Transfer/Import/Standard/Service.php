@@ -536,8 +536,8 @@ class Service
                     $title_S2 = $this->getValue('S2_Titel');
                     $memberNumber_S2 = $this->getValue('S2_Mitgliedsnummer');
                     $assistance_S2 = $this->getValue('S2_Mitarbeitbereitschaft');
-                    $contactNumber_S1 = $this->getValue('S2_BC_Kontakt_Nr');
-                    $tblPerson_S2 = $this->setPersonCustody($salutation_S2, $title_S2, $firstName_S2, $lastName_S2, $memberNumber_S2, $assistance_S2, $contactNumber_S1);
+                    $contactNumber_S2 = $this->getValue('S2_BC_Kontakt_Nr');
+                    $tblPerson_S2 = $this->setPersonCustody($salutation_S2, $title_S2, $firstName_S2, $lastName_S2, $memberNumber_S2, $assistance_S2, $contactNumber_S2);
                     $countS2++;
                 } else {
                     $info[] = new Muted(new Small(($Nr ? 'Nr.: '.$Nr : 'Zeile: '.($this->RunY + 1)).' Der Sorgeberechtigte S2 ('.$lastName_S2.' PLZ '.$cityCode_S2.') wurde nicht angelegt, da schon eine 
