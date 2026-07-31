@@ -7,32 +7,22 @@ use MOC\V\Component\Document\Document;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use SPHERE\Application\Billing\Accounting\Debtor\Debtor;
 use SPHERE\Application\Contact\Address\Address;
-use SPHERE\Application\Contact\Address\Service\Entity\TblState;
 use SPHERE\Application\Contact\Mail\Mail;
 use SPHERE\Application\Contact\Mail\Service\Entity\TblType as TblTypeMail;
 use SPHERE\Application\Contact\Phone\Phone;
 use SPHERE\Application\Contact\Phone\Service\Entity\TblType as TblTypePhone;
-use SPHERE\Application\Contact\Web\Service\Entity\TblType as TblTypeWeb;
-use SPHERE\Application\Contact\Web\Web;
-use SPHERE\Application\Corporation\Company\Company;
 use SPHERE\Application\Corporation\Company\Service\Entity\TblCompany;
-use SPHERE\Application\Corporation\Group\Group as CompanyGroup;
-use SPHERE\Application\Corporation\Group\Service\Entity\TblGroup as TblGroupCompany;
 use SPHERE\Application\Education\Lesson\DivisionCourse\DivisionCourse;
 use SPHERE\Application\Education\Lesson\DivisionCourse\Service\Entity\TblDivisionCourseType;
+use SPHERE\Application\Education\Lesson\Subject\Service\Entity\TblCategory;
 use SPHERE\Application\Education\Lesson\Subject\Subject;
 use SPHERE\Application\Education\Lesson\Term\Term;
-use SPHERE\Application\Education\School\Course\Course;
-use SPHERE\Application\Education\School\Type\Service\Entity\TblType;
-use SPHERE\Application\Education\School\Type\Type;
 use SPHERE\Application\People\Group\Group;
 use SPHERE\Application\People\Group\Service\Entity\TblGroup;
-use SPHERE\Application\People\Meta\Child\Child;
 use SPHERE\Application\People\Meta\Club\Club;
 use SPHERE\Application\People\Meta\Common\Common;
 use SPHERE\Application\People\Meta\Common\Service\Entity\TblCommonInformation;
-use SPHERE\Application\People\Meta\Custody\Custody;
-use SPHERE\Application\People\Meta\Prospect\Prospect;
+use SPHERE\Application\People\Meta\Student\Service\Entity\TblStudentSubjectType;
 use SPHERE\Application\People\Meta\Student\Service\Entity\TblStudentTransferType;
 use SPHERE\Application\People\Meta\Student\Student;
 use SPHERE\Application\People\Meta\Teacher\Teacher;
@@ -62,8 +52,6 @@ use SPHERE\Common\Frontend\Text\Repository\Danger as DangerText;
 use SPHERE\Common\Frontend\Text\Repository\Muted;
 use SPHERE\Common\Frontend\Text\Repository\Small;
 use SPHERE\Common\Frontend\Text\Repository\Success as SuccessText;
-use SPHERE\Common\Frontend\Text\Repository\Warning as WarningText;
-use SPHERE\System\Extension\Repository\Debugger;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -77,6 +65,43 @@ class Service
     private $Location = array();
     /** @var PhpExcel $Document */
     private $Document = null;
+
+    public $Subject = array(
+        '1532' => 'Englisch',
+        '1542' => 'Französisch',
+        '1543' => 'Französisch Niveau A',
+        '1547' => 'Latein',
+        '1555' => 'Italienisch',
+        '1559' => 'Chinesisch',
+    );
+    public $Nation = array(
+        '11' => 'Syrien',
+        '22' => 'Türkei',
+        '27' => 'Ungarn',
+        '38' => 'USA',
+        '55' => 'Peru',
+        '103' => 'Brasilien',
+        '109' => 'Bulgarien',
+        '113' => 'China (VR)',
+        '118' => 'Deutschland',
+        '134' => 'Griechenland',
+//        '135' => '', // ToDO Lehrer Hughes, Gillian
+        '145' => 'Iran Islam. Rep.',
+        '149' => 'Italien',
+        '154' => 'Serbien und Montenegro',
+        '170' => 'Kroatien',
+        '193' => 'Mexiko',
+    );
+    public $Religion = array(
+        'EV' => 'evangelisch',
+        'EVF' => 'EVF',
+        'GRO' => 'syrisch-orthodox',
+        'IS' => 'islamisch',
+        'KE' => 'Keine Religionszugehörigkeit',
+        'NA' => 'neuapostolisch',
+        'OA' => '(leer)',
+        'RK' => 'römisch-katholisch',
+    );
 
     /**
      * @param IFormInterface|null $Form
@@ -355,6 +380,7 @@ class Service
             $studentBirth = $this->getValue('Geburtsdatum');
             $birthPlace = $this->getValue('Geburtsort');
             $nationality = $this->getValue('NationKZ');
+            $nationality = $this->replaceNationality($nationality);
             $denomination = $this->getValue('KonfessKnz');
 //            $remarkString = $this->getValue('Bemerkungen');
             $remarkString = ''; // noch etwas hinterlegen?
@@ -383,9 +409,18 @@ class Service
             $insurance = ''; // $this->getValue('Krankenkasse');
             $religion = ''; // $this->getValue('Fach_Religion');
             $specialNeedsLevel = ''; // $this->getValue('Förderschule_Stufe');
+            $ForeignLanguage1 =  $this->getValue('Sprache1');
+            $ForeignLanguage2 =  $this->getValue('Sprache2');
+            $MigrationBackground =  $this->getValue('Muttersprache');
+            $hasMigrationBackground = false;
+            if($MigrationBackground == '' || strtolower($MigrationBackground) == 'deutsch') {
+                $MigrationBackground = ''; // deutsch wieder entfernen
+            } else {
+                $hasMigrationBackground = true;
+            }
             $this->setPersonTblStudent($tblPerson, $Identification, $schoolAttendanceStartDate, $arriveDate, $arriveRemark, $disease, $medication,
-                $insurance, $religion, $enrollmentDate, null, $schoolEnrollmentType, $specialNeedsLevel,
-                $this->RunY, $error);
+                $insurance, $religion, $enrollmentDate, null, $schoolEnrollmentType, $specialNeedsLevel, $ForeignLanguage1, $ForeignLanguage2,
+                $hasMigrationBackground, $MigrationBackground, $this->RunY, $error);
 
             // division
             $divisionString = $this->getValue('KlassenKZ');
@@ -522,6 +557,15 @@ class Service
                     $district_S1 = $this->getValue('OrtsteilBP1');
                     $country_S1 = ''; // $this->getValue('Landkreis');
                     $nation_S1 = ''; // $this->getValue('S1_Land');
+                    // Country übernehmen wenn Schüleradresse identisch ist
+                    if($streetName_S1 == $streetName
+                    && $streetNumber_S1 == $streetNumber
+                    && $city_S1 == $city
+                    && $cityCode_S1 == $cityCode
+                    ){
+                        $country_S1 = $country;
+                    }
+
                     $this->setPersonAddress($tblPerson_S1, $streetName_S1, $streetNumber_S1, $city_S1, $cityCode_S1, $district_S1, $country_S1, $nation_S1, $this->RunY, $error);
                     // S2 if same Column
                     // S2 address
@@ -613,7 +657,8 @@ class Service
                     $district_S2Temp = $this->getValue('OrtsteilBP2');
                     $country_S2Temp = ''; // $this->getValue('Landkreis');
                     $nation_S2Temp = ''; // $this->getValue('S2_Land');
-                    if($streetName_S2Temp && $streetNumber_S2Temp && $city_S2Temp && $cityCode_S2Temp){
+                    // Sobald ein S2 Adressteil gepflegt ist soll die andere Adresse ersetzt werden, auch wenn es keine korrekte Adresse ergibt
+                    if($streetName_S2Temp || $streetNumber_S2Temp || $city_S2Temp || $cityCode_S2Temp){
                         $streetName_S2 = $streetName_S2Temp;
                         $streetNumber_S2 = $streetNumber_S2Temp;
                         $city_S2 = $city_S2Temp;
@@ -1395,7 +1440,7 @@ class Service
      */
     private function setPersonTblStudent(TblPerson $tblPerson, $Identification, $schoolAttendanceStartDate, $arriveDate, $arriveRemark,
         $disease, $medication, $insurance, $religion, $enrollmentDate, $tblCompanyStammschule,
-        $schoolEnrollmentType, $specialNeedsLevel, $RunY, &$error)
+        $schoolEnrollmentType, $specialNeedsLevel, $ForeignLanguage1, $ForeignLanguage2, $hasMigrationBackground, $MigrationBackground, $RunY, &$error)
     {
         // controll conform DateTime string
         $schoolAttendanceStartDate = $this->checkDate($schoolAttendanceStartDate, 'Ungültiges Schulpflichtbeginn-Datum:', $RunY, $error);
@@ -1409,19 +1454,56 @@ class Service
             $tblStudentSpecialNeeds = Student::useService()->insertStudentSpecialNeedsLevel($specialNeedsLevel);
         }
         // Student
-        $tblStudent = Student::useService()->insertStudent($tblPerson, $Identification, $tblStudentMedicalRecord, null, null, null, null, $tblStudentSpecialNeeds, $schoolAttendanceStartDate);
+        $tblStudent = Student::useService()->insertStudent($tblPerson, $Identification, $tblStudentMedicalRecord, null, null, null, null,
+            $tblStudentSpecialNeeds, $schoolAttendanceStartDate, $hasMigrationBackground, $MigrationBackground);
 
         if($religion){
+            if($religion == 'EV'){
+                $religion = 'RE/e';
+            }
             $tblSubject = Subject::useService()->getSubjectByAcronym($religion);
             if(!$tblSubject){
                 $tblSubject = Subject::useService()->getSubjectByName($religion);
             }
             if($tblSubject){
-                $tblStudentSubjectType = Student::useService()->getStudentSubjectTypeByIdentifier('RELIGION');
+                $tblStudentSubjectType = Student::useService()->getStudentSubjectTypeByIdentifier(TblStudentSubjectType::TYPE_RELIGION);
                 $tblSubjectRanking = Student::useService()->getStudentSubjectRankingByIdentifier('1');
                 Student::useService()->addStudentSubject($tblStudent, $tblStudentSubjectType,$tblSubjectRanking, $tblSubject);
             }
         }
+        // ForeignLanguage1
+        if($ForeignLanguage1){
+            $tblSubject = false;
+            $ForeignLanguage1 = $this->replaceSubjectForeign($ForeignLanguage1);
+            if(!is_numeric($ForeignLanguage1)
+            && !($tblSubject = Subject::useService()->getSubjectByName($ForeignLanguage1))){
+                $tblSubject = Subject::useService()->insertSubject(strtoupper(substr($ForeignLanguage1, 0, 3)), $ForeignLanguage1);
+                $tblCategory = Subject::useService()->getCategoryByIdentifier(TblCategory::IDENTIFIER_FOREIGN_LANGUAGE);
+                Subject::useService()->addCategorySubject($tblCategory, $tblSubject);
+            }
+            if($tblSubject){
+                $tblStudentSubjectType = Student::useService()->getStudentSubjectTypeByIdentifier(TblStudentSubjectType::TYPE_FOREIGN_LANGUAGE);
+                $tblSubjectRanking = Student::useService()->getStudentSubjectRankingByIdentifier('1');
+                Student::useService()->addStudentSubject($tblStudent, $tblStudentSubjectType,$tblSubjectRanking, $tblSubject);
+            }
+        }
+        // ForeignLanguage2
+        if($ForeignLanguage2){
+            $tblSubject = false;
+            $ForeignLanguage2 = $this->replaceSubjectForeign($ForeignLanguage2);
+            if(!is_numeric($ForeignLanguage2)
+                && !($tblSubject = Subject::useService()->getSubjectByName($ForeignLanguage2))){
+                $tblSubject = Subject::useService()->insertSubject(strtoupper(substr($ForeignLanguage2, 0, 3)), $ForeignLanguage2);
+                $tblCategory = Subject::useService()->getCategoryByIdentifier(TblCategory::IDENTIFIER_FOREIGN_LANGUAGE);
+                Subject::useService()->addCategorySubject($tblCategory, $tblSubject);
+            }
+            if($tblSubject){
+                $tblStudentSubjectType = Student::useService()->getStudentSubjectTypeByIdentifier(TblStudentSubjectType::TYPE_FOREIGN_LANGUAGE);
+                $tblSubjectRanking = Student::useService()->getStudentSubjectRankingByIdentifier('2');
+                Student::useService()->addStudentSubject($tblStudent, $tblStudentSubjectType,$tblSubjectRanking, $tblSubject);
+            }
+        }
+
         if ($enrollmentDate
         && ($enrollmentDate = $this->checkDate($enrollmentDate, 'Ungültiges Einschulungsdatum:', $RunY, $error))
         && ($tblStudentTransferType = Student::useService()->getStudentTransferTypeByIdentifier(TblStudentTransferType::ENROLLMENT))) {
@@ -1593,5 +1675,52 @@ class Service
             'IsMobile' => $isMobile,
             'Remark'   => $remark,
         );
+    }
+
+    /**
+     * @param string $nationality
+     *
+     * @return string
+     */
+    private function replaceNationality($nationality)
+    {
+
+        $mapping = $this->Nation;
+        $key = trim($nationality);
+        if (isset($mapping[$key])) {
+            return $mapping[$key];
+        }
+
+        return $nationality;
+    }
+
+    /**
+     * @param $nationality
+     *
+     * @return void
+     */
+    private function replaceSubjectForeign($Subject)
+    {
+        $mapping = $this->Subject;
+        $key = trim($Subject);
+        if (isset($mapping[$key])) {
+            return $mapping[$key];
+        }
+
+        return $Subject;
+    }
+
+    /**
+     * @param $nationality
+     *
+     * @return void
+     */
+    private function replaceSubjectReligion($Religion)
+    {
+        $mapping = $this->Religion;
+        $key = trim($Religion);
+        if (isset($mapping[$key])) {
+            return $mapping[$key];
+        }
     }
 }

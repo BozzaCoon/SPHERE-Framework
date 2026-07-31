@@ -20,6 +20,9 @@ class TblCategory extends Element
     const ATTR_IS_LOCKED = 'IsLocked';
     const ATTR_NAME = 'Name';
     const ATTR_DESCRIPTION = 'Description';
+    const IDENTIFIER_PROFILE = 'PROFILE';
+    const IDENTIFIER_FOREIGN_LANGUAGE = 'FOREIGNLANGUAGE';
+    const IDENTIFIER_RELIGION = 'RELIGION';
 
     /**
      * @Column(type="string")
