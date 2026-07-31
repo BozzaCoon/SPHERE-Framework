@@ -165,10 +165,6 @@ class Frontend extends Extension implements IFrontendInterface
                 new ChevronLeft()
             )
         );
-        $Stage->addButton(
-            new External('Importvorlage', '/Api/Transfer/Standard/DownloadTemplateTeacher',
-                new Download(), array(), false)
-        );
         $Stage->setContent(
             new Layout(new LayoutGroup(new LayoutRow(new LayoutColumn(array(
                 new Well(

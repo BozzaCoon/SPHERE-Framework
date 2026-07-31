@@ -31,8 +31,6 @@ use SPHERE\Application\People\Person\Service\Entity\TblPerson;
 use SPHERE\Application\People\Person\Service\Entity\TblSalutation;
 use SPHERE\Application\People\Relationship\Relationship;
 use SPHERE\Application\People\Relationship\Service\Entity\TblType as TblTypeRelationship;
-use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Consumer;
-use SPHERE\Application\Platform\Gatekeeper\Authorization\Consumer\Service\Entity\TblConsumer;
 use SPHERE\Application\Setting\Authorization\Account\Account;
 use SPHERE\Common\Frontend\Form\IFormInterface;
 use SPHERE\Common\Frontend\Form\Structure\FormColumn;
@@ -66,7 +64,7 @@ class Service
     /** @var PhpExcel $Document */
     private $Document = null;
 
-    public $Subject = array(
+    public array $Subject = array(
         '1532' => 'Englisch',
         '1542' => 'Französisch',
         '1543' => 'Französisch Niveau A',
@@ -74,7 +72,7 @@ class Service
         '1555' => 'Italienisch',
         '1559' => 'Chinesisch',
     );
-    public $Nation = array(
+    public array $Nation = array(
         '11' => 'Syrien',
         '22' => 'Türkei',
         '27' => 'Ungarn',
@@ -92,7 +90,7 @@ class Service
         '170' => 'Kroatien',
         '193' => 'Mexiko',
     );
-    public $Religion = array(
+    public array $Religion = array(
         'EV' => 'evangelisch',
         'EVF' => 'EVF',
         'GRO' => 'syrisch-orthodox',
@@ -105,12 +103,13 @@ class Service
 
     /**
      * @param IFormInterface|null $Form
-     * @param UploadedFile|null   $File
-     * @param array|null          $Data
+     * @param UploadedFile|null $File
+     * @param array|null $Data
      *
      * @return string
+     * @throws \MOC\V\Component\Document\Exception\DocumentTypeException
      */
-    public function createStudentsFromFile(IFormInterface $Form = null, UploadedFile $File = null, $Data = null)
+    public function createStudentsFromFile(IFormInterface $Form = null, UploadedFile $File = null, array $Data = null): string
     {
         /**
          * Skip to Frontend
@@ -747,7 +746,7 @@ class Service
      *
      * @return string
      */
-    private function getValue($columnName)
+    private function getValue(string $columnName): string
     {
         if ($this->Location[$columnName] !== null) {
             return trim($this->Document->getValue($this->Document->getCell($this->Location[$columnName], $this->RunY)));
@@ -758,13 +757,13 @@ class Service
 
     /**
      * @param IFormInterface|null $Form
-     * @param UploadedFile        $File
+     * @param UploadedFile|null   $File
      *
      * @return IFormInterface|Danger|string
      *
      * @throws \MOC\V\Component\Document\Exception\DocumentTypeException
      */
-    public function createStaffFromFile(IFormInterface $Form = null, UploadedFile $File = null)
+    public function createStaffFromFile(IFormInterface $Form = null, UploadedFile $File = null): IFormInterface|Danger|string
     {
 
         /**
@@ -796,42 +795,40 @@ class Service
                  * Header -> Location
                  */
                 $Location = array(
-                    'Nr'                    => null,
-                    'Anrede'                => null,
-                    'Titel'                 => null,
-                    'Name'                  => null,
-                    'Vorname'               => null,
-                    'Lehrer'                => null,
-                    'Kürzel'                => null,
-                    'Geburtsdatum'          => null,
-                    'PLZ'                   => null,
-                    'Ort'                   => null,
-                    'Ortsteil'              => null,
-                    'Straße'                => null,
-                    'HNR'                   => null,
-                    'Land'                  => null,
-                    'Geschäftlich_Festnetz' => null,
-                    'Geschäftlich_Mobil'    => null,
-                    'Notfall_Festnetz'      => null,
-                    'Notfall_Mobil'         => null,
-                    'Privat_Festnetz'       => null,
-                    'Privat_Mobil'          => null,
-                    'E_Mail_Geschäftlich'   => null,
-                    'E_Mail_Privat'         => null,
-                );
+//                    'Nr'             => null,
+//                    'Anrede'         => null,
+                    'Titel'          => null, // bis jetzt alles leer
+                    'LehrerName'     => null, // Name
+                    'LehrerVorname'  => null, // Vorname
+                    'Geschlecht'     => null,
+                    'NationKZ'       => null,
+                    'Konfession'     => null,
+//                    'Lehrer'         => null, // sind wohl alles Lehrer
+                    'LehrerKZ'       => null, // Kürzel
+                    'Geburtstag'     => null, // Geburtsdatum
+                    'Geburtsort'     => null,
+                    'Geburtsname'    => null,
+                    'PrivatPLZ'      => null, // PLZ
+                    'Wohnort'        => null, // Ort
+//                    'Ortsteil'       => null, // stehen nur zahlen drin
+                    'Privatstrasse'  => null, // Straße -> Herrausforderung straße und Hnr. sind kombiniert
+                    'HausNr'         => null, // in den 2 Testdaten leer
+//                    'Land'           => null, // nicht sinnvoll gepflegt
+                    'Schultelefon'   => null, // Geschäftlich_Festnetz
+                    'PrivatTelefon'  => null, // Privat_Festnetz
+                    'PrivatHandy'    => null, // Privat_Mobil
+                    'PrivatFax'      => null,
+                    'privateEMail'   => null, // E_Mail_Privat
+                    'PersonalNummer' => null,
 
-                // EKBO -> ESBZ
-                if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESBZ')){
-                    $Location['BC_Kontakt_Nr'] = null;
-                }
-                if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESFHG')
-                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESP')
-                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESB')
-                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'EVZ')){
-                    $Location['PNR'] = null;
-                }
+                    // mögliche Daten für Remark noch außen vor:
+                        //  LehrerAmtsbez
+                        //  Familienstand
+                        //  Lehrerzimmer
+
+                );
                 for ($RunX = 0; $RunX < $X; $RunX++) {
-                    $Value = trim($Document->getValue($Document->getCell($RunX, 1)));
+                    $Value = trim($Document->getValue($Document->getCell($RunX, 0)));
                     if (array_key_exists($Value, $Location)) {
                         $Location[$Value] = $RunX;
                     }
@@ -845,95 +842,93 @@ class Service
                     $countStaffExists = 0;
                     $error = array();
 
-                    for ($RunY = 2; $RunY < $Y; $RunY++) {
+                    for ($RunY = 1; $RunY < $Y; $RunY++) {
                         set_time_limit(300);
                         // Teacher ---------------------------------------------------------------------------------------------
-                        $firstName = trim($Document->getValue($Document->getCell($Location['Vorname'], $RunY)));
-                        $lastName = trim($Document->getValue($Document->getCell($Location['Name'], $RunY)));
+                        $firstName = trim($Document->getValue($Document->getCell($Location['LehrerVorname'], $RunY)));
+                        $lastName = trim($Document->getValue($Document->getCell($Location['LehrerName'], $RunY)));
                         if ($firstName === '' || $lastName === '') {
                             $error[] = new DangerText('Zeile: '.($RunY + 1)).' Mitarbeiter wurde nicht hinzugefügt, da er keinen Vornamen und/oder Namen besitzt.';
                             continue;
                         }
                         // person check
-                        $cityCode = trim($Document->getValue($Document->getCell($Location['PLZ'], $RunY)));
+                        $cityCode = trim($Document->getValue($Document->getCell($Location['PrivatPLZ'], $RunY)));
                         $tblPerson = Person::useService()->existsPerson($firstName, $lastName, $cityCode);
                         if($tblPerson){
-                            $info[] = new Muted(new Small('Zeile: '.($RunY + 1).' Person '.$tblPerson->getLastFirstName().' gefunden, wird zusätzlich Mitarbeiter.'));
+                            $info[] = new Muted(new Small('Zeile: '.($RunY + 1).' Person '.$tblPerson->getLastFirstName().' gefunden, wird zusätzlich Mitarbeiter/Lehrer.'));
                             $countStaffExists++;
-                            $teacher = trim($Document->getValue($Document->getCell($Location['Lehrer'], $RunY)));
-                            $isTeacher = false;
-                            if(strtoupper($teacher) === 'X'){
-                                $isTeacher = true;
+                            $this->setGroupStaff($tblPerson);
+                            $remark = '';
+                            if(($PersonalNumber = trim($Document->getValue($Document->getCell($Location['PersonalNummer'], $RunY))))){
+                                $remark = 'Personalnummer: '.$PersonalNumber;
                             }
-                            $this->setGroupStaff($tblPerson, $isTeacher);
-                            // Update Remark
-                            if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESFHG')
-                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESP')
-                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESB')
-                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'EVZ')){
-                                $remark = 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['PNR'], $RunY)));
+                            if($remark){
                                 $this->setUpdateCommonRemark($tblPerson, $remark);
                             }
-
+                            // add teacher info
+                            if(($acronym = trim($Document->getValue($Document->getCell($Location['LehrerKZ'], $RunY))))){
+                                Teacher::useService()->insertTeacher($tblPerson, $acronym);
+                            }
                         } else {
                             // nicht vorhandene Personen werden angelegt
-                            $salutation = trim($Document->getValue($Document->getCell($Location['Anrede'], $RunY)));
+                            $salutation = ''; // trim($Document->getValue($Document->getCell($Location['Anrede'], $RunY)));
                             $title = trim($Document->getValue($Document->getCell($Location['Titel'], $RunY)));
-                            $teacher = trim($Document->getValue($Document->getCell($Location['Lehrer'], $RunY)));
-                            $tblPerson = $this->setPersonStaff($salutation, $title, $firstName, $lastName, $teacher);
+                            $BirthName = trim($Document->getValue($Document->getCell($Location['Geburtsname'], $RunY)));
+                            $BirthName = str_replace('pipi', '', $BirthName);
+                            $tblPerson = $this->setPersonStaff($salutation, $title, $firstName, $lastName, $BirthName);
 
-//                            $gender = trim($Document->getValue($Document->getCell($Location['Geschlecht'], $RunY)));
-//                            $birthPlace = trim($Document->getValue($Document->getCell($Location['Geburtsort'], $RunY)));
-//                            $nationality = trim($Document->getValue($Document->getCell($Location['Staatsangehörigkeit'], $RunY)));
-                            $gender = '';
-                            $birthPlace = '';
-                            $nationality = '';
-                            $birth = trim($Document->getValue($Document->getCell($Location['Geburtsdatum'], $RunY)));
-                            $denomination = '';
-                            $remark = '';
-                            if(($remarkTemp = trim($Document->getValue($Document->getCell($Location['Lehrer'], $RunY))))){
-                                if(strtoupper($remarkTemp) != 'X'){
-                                    $remark = $remarkTemp;
-                                }
-                            }
-                            // EKBO -> ESBZ "die Personalnummer => kommt in die Personenbemerkung"
-                            if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESBZ')){
-                                $remark .= 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['BC_Kontakt_Nr'], $RunY)));
-                            }
-                            if(Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESFHG')
-                             || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESP')
-                             || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'ESB')
-                                || Consumer::useService()->getConsumerBySessionIsConsumer(TblConsumer::TYPE_BERLIN, 'EVZ')){
-                                $remark .= 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['PNR'], $RunY)));
-                            }
+                            $gender = trim($Document->getValue($Document->getCell($Location['Geschlecht'], $RunY)));
+                            $birthPlace = trim($Document->getValue($Document->getCell($Location['Geburtsort'], $RunY)));
+                            $nationality = trim($Document->getValue($Document->getCell($Location['NationKZ'], $RunY)));
+                            $nationality = $this->replaceNationality($nationality);
+                            $birth = trim($Document->getValue($Document->getCell($Location['Geburtstag'], $RunY)));
+                            $denomination = trim($Document->getValue($Document->getCell($Location['Konfession'], $RunY)));
+
+                            $remark = 'Personalnummer: '.trim($Document->getValue($Document->getCell($Location['PersonalNummer'], $RunY)));
                             $this->setPersonBirth($tblPerson, $birth, $birthPlace, $gender, $nationality, $denomination, $remark, $RunY, $error);
 
                             // address
-                            $streetName = trim($Document->getValue($Document->getCell($Location['Straße'], $RunY)));
-                            $streetNumber = trim($Document->getValue($Document->getCell($Location['HNR'], $RunY)));
-                            $city = trim($Document->getValue($Document->getCell($Location['Ort'], $RunY)));
-                            $cityCode = trim($Document->getValue($Document->getCell($Location['PLZ'], $RunY)));
-                            $district = trim($Document->getValue($Document->getCell($Location['Ortsteil'], $RunY)));
-                            $nation = trim($Document->getValue($Document->getCell($Location['Land'], $RunY)));
+                            // straße und Hnr. sind kombiniert
+                            $streetName = trim($Document->getValue($Document->getCell($Location['Privatstrasse'], $RunY)));
+                            $streetNumber = trim($Document->getValue($Document->getCell($Location['HausNr'], $RunY)));
+                            if(!$streetNumber){
+                                $AddressArray = $this->splitStreetAndNumber($streetName);
+                                $streetName = $AddressArray['street'];
+                                $streetNumber = $AddressArray['number'];
+                            }
+
+                            $city = trim($Document->getValue($Document->getCell($Location['Wohnort'], $RunY)));
+                            $cityCode = trim($Document->getValue($Document->getCell($Location['PrivatPLZ'], $RunY)));
+                            $district = ''; //trim($Document->getValue($Document->getCell($Location['Ortsteil'], $RunY)));
+
+                            $nation = ''; // trim($Document->getValue($Document->getCell($Location['Land'], $RunY)));
                             $this->setPersonAddress($tblPerson, $streetName, $streetNumber, $city, $cityCode, $district, '', $nation, $RunY, $error);
                             $countStaff++;
                         }
 
-                        // contact expand if exist is ok
-                        $emergencyPhone = trim($Document->getValue($Document->getCell($Location['Notfall_Festnetz'], $RunY)));
-                        $emergencyMobile = trim($Document->getValue($Document->getCell($Location['Notfall_Mobil'], $RunY)));
-                        $privatePhone = trim($Document->getValue($Document->getCell($Location['Privat_Festnetz'], $RunY)));
-                        $privateMobile = trim($Document->getValue($Document->getCell($Location['Privat_Mobil'], $RunY)));
-                        $businessPhone = trim($Document->getValue($Document->getCell($Location['Geschäftlich_Festnetz'], $RunY)));
-                        $businessMobile = trim($Document->getValue($Document->getCell($Location['Geschäftlich_Mobil'], $RunY)));
-                        $businessMail = trim($Document->getValue($Document->getCell($Location['E_Mail_Geschäftlich'], $RunY)));
-                        $privateMail = trim($Document->getValue($Document->getCell($Location['E_Mail_Privat'], $RunY)));
-                        $this->setPersonPhone($tblPerson, $emergencyPhone, $emergencyMobile, $privatePhone, $privateMobile, $businessPhone, $businessMobile, $privateMail, $businessMail);
+                        if(($privatePhone = trim($Document->getValue($Document->getCell($Location['PrivatTelefon'], $RunY))))){
+                            $this->setPersonPhoneWithType($tblPerson, $privatePhone, TblTypePhone::VALUE_NAME_PRIVATE, TblTypePhone::VALUE_DESCRIPTION_PHONE);
+                        }
+                        if(($privateMobile = trim($Document->getValue($Document->getCell($Location['PrivatHandy'], $RunY))))){
+                            $this->setPersonPhoneWithType($tblPerson, $privateMobile, TblTypePhone::VALUE_NAME_PRIVATE, TblTypePhone::VALUE_DESCRIPTION_MOBILE);
+                        }
+                        if(($businessPhone = trim($Document->getValue($Document->getCell($Location['Schultelefon'], $RunY))))){
+                            $this->setPersonPhoneWithType($tblPerson, $businessPhone, TblTypePhone::VALUE_NAME_BUSINESS, TblTypePhone::VALUE_DESCRIPTION_PHONE);
+                        }
+                        if(($privateFax = trim($Document->getValue($Document->getCell($Location['PrivatFax'], $RunY))))){
+                            $this->setPersonPhoneWithType($tblPerson, $privateFax, TblTypePhone::VALUE_NAME_FAX, TblTypePhone::VALUE_NAME_PRIVATE);
+
+                        }
+
+                        // mail
+                        if(($privateMail = trim($Document->getValue($Document->getCell($Location['privateEMail'], $RunY))))){
+                            $this->setPersonMail($tblPerson, $privateMail);
+                        }
 
                         // add teacher info
-                        $acronym = trim($Document->getValue($Document->getCell($Location['Kürzel'], $RunY)));
-                        Teacher::useService()->insertTeacher($tblPerson, $acronym);
-
+                        if(($acronym = trim($Document->getValue($Document->getCell($Location['LehrerKZ'], $RunY))))){
+                            Teacher::useService()->insertTeacher($tblPerson, $acronym);
+                        }
                     }
 
                     if(empty($error)){
@@ -987,7 +982,8 @@ class Service
      *
      * @return bool|TblPerson
      */
-    private function setPersonStudent($firstName, $secondName, $callName, $lastName, $birthName, $studentGender, $isProspect = false, $ImportId = '')
+    private function setPersonStudent(string $firstName, string $secondName, string $callName, string $lastName, string $birthName, string $studentGender,
+        bool $isProspect = false, string $ImportId = ''): bool|TblPerson
     {
 
         $GroupList = array();
@@ -1033,7 +1029,7 @@ class Service
      *
      * @return void
      */
-    private function setPersonGroup(TblPerson $tblPerson, string $Group)
+    private function setPersonGroup(TblPerson $tblPerson, string $Group): void
     {
 
         $tblGroup = Group::useService()->insertGroup($Group);
@@ -1050,7 +1046,8 @@ class Service
      * @param string $contactNumber
      * @return bool|TblPerson
      */
-    private function setPersonCustody($salutation, $title, $firstName, $lastName, $memberNumber = '', $assistance = '', $contactNumber = '')
+    private function setPersonCustody(string $salutation, string $title, string $firstName, string $lastName, string $memberNumber = '', string $assistance = '',
+        string $contactNumber = ''): bool|TblPerson
     {
 
         $GroupList = array();
@@ -1126,9 +1123,11 @@ class Service
      * @param string    $remark
      * @param int       $RunY
      * @param array     $error
+     *
+     * @return void
      */
-    private function setPersonBirth(TblPerson $tblPerson, $birthdayString, $birthPlace, $gender, $nationality, $denomination,
-        $remark, $RunY, &$error)
+    private function setPersonBirth(TblPerson $tblPerson, string $birthdayString, string $birthPlace, string $gender, string $nationality, string $denomination,
+        string$remark, int $RunY, array &$error): void
     {
         // controll conform DateTime string
         $tblCommonGender = false;
@@ -1178,7 +1177,7 @@ class Service
      *
      * @return void
      */
-    private function setUpdateCommonRemark(TblPerson $tblPerson, string $remark = '')
+    private function setUpdateCommonRemark(TblPerson $tblPerson, string $remark = ''): void
     {
         if(($tblCommon = Common::useService()->getCommonByPerson($tblPerson))){
             if($remark){
@@ -1194,16 +1193,16 @@ class Service
      * @param string    $divisionString
      * @param string    $level
      *
-     * @return null
+     * @return void
      */
-    private function setPersonDivision(TblPerson $tblPerson, $YearString, $divisionString , $level)
+    private function setPersonDivision(TblPerson $tblPerson, string $YearString, string $divisionString , string $level): void
     {
 
         $year = (int)$YearString;
         $yearShort = (int)substr($YearString, 2, 2);
 
         if ($divisionString === '') {
-            return null;
+            return;
         }
         $tblYear = Term::useService()->insertYear($year.'/'.($yearShort + 1));
         if ($tblYear) {
@@ -1305,8 +1304,6 @@ class Service
 
             DivisionCourse::useService()->insertStudentEducation($tblPerson, (int)$level, $tblYear, $tblDivisionCourseDivision, null, null, null, null);
         }
-
-        return null;
     }
 
     /**
@@ -1320,8 +1317,11 @@ class Service
      * @param string    $nation
      * @param int       $RunY
      * @param array     $error
+     *
+     * @return void
      */
-    private function setPersonAddress(TblPerson $tblPerson, $streetName, $streetNumber, $city, $cityCode, $district, $country, $nation, $RunY, &$error)
+    private function setPersonAddress(TblPerson $tblPerson, string $streetName, string $streetNumber, string $city, string $cityCode, string $district,
+        string $country, string $nation, int $RunY, array &$error): void
     {
 
         if($district == ''){
@@ -1365,8 +1365,10 @@ class Service
     /**
      * @param TblPerson $tblPerson
      * @param array    $emergencyPhone [Number, IsMobile, Remark]
+     *
+     * @return void
      */
-    private function setPersonPhone(TblPerson $tblPerson, array $PhoneList)
+    private function setPersonPhone(TblPerson $tblPerson, array $PhoneList): void
     {
 
         $tblType = Phone::useService()->getTypeByNameAndDescription(TblTypePhone::VALUE_NAME_PRIVATE, TblTypePhone::VALUE_DESCRIPTION_PHONE);
@@ -1380,43 +1382,37 @@ class Service
         }
     }
 
-    private function setPersonMail(TblPerson $tblPerson, $privateMail)
+    /**
+     * @param TblPerson $tblPerson
+     * @param string $Number
+     * @param string $Type
+     * @param string $PhoneType
+     *
+     * @return void
+     */
+    private function setPersonPhoneWithType(TblPerson $tblPerson, string $Number,
+        string $Type = TblTypePhone::VALUE_NAME_PRIVATE,
+        string $PhoneType = TblTypePhone::VALUE_DESCRIPTION_PHONE): void
+    {
+
+        $tblType = Phone::useService()->getTypeByNameAndDescription($Type, $PhoneType);
+        if($tblType){
+            Phone::useService()->insertPhoneToPerson($tblPerson, $Number, $tblType, '');
+        }
+    }
+
+    /**
+     * @param TblPerson $tblPerson
+     * @param string $privateMail
+     * @return void
+     */
+    private function setPersonMail(TblPerson $tblPerson, string $privateMail): void
     {
 
         if($privateMail){
             $tblType = Mail::useService()->getTypeByName(TblTypeMail::VALUE_PRIVATE);
             Mail::useService()->insertMailToPerson($tblPerson, $privateMail, $tblType, '');
         }
-//        if($businessMail){
-//            $tblType = Mail::useService()->getTypeByName(TblTypeMail::VALUE_BUSINESS);
-//            Mail::useService()->insertMailToPerson($tblPerson, $businessMail, $tblType, '');
-//        }
-    }
-
-    /**
-     * @param TblPerson     $tblPerson
-     * @param               $debtorNumber
-     */
-    private function setPersonDebtorNumber(TblPerson $tblPerson, $debtorNumber)
-    {
-
-        Debtor::useService()->createDebtorNumber($tblPerson, $debtorNumber);
-    }
-
-    /**
-     * @param TblPerson $tblPerson
-     * @param string    $bankName
-     * @param string    $IBAN
-     * @param string    $BIC
-     */
-    private function setPersonBankAccount(TblPerson $tblPerson, $bankName, $IBAN, $BIC)
-    {
-
-        $Owner = $tblPerson->getFirstName().' '.$tblPerson->getLastName();
-        Debtor::useService()->createBankAccount($tblPerson, $Owner, $bankName, $IBAN, $BIC);
-        // Definition Bezahlergruppe
-        $tblGroupPayment = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_DEBTOR);
-        Group::useService()->addGroupPerson($tblGroupPayment, $tblPerson);
     }
 
     /**
@@ -1433,14 +1429,15 @@ class Service
      * @param null|TblCompany $tblCompanyStammschule
      * @param string          $schoolEnrollmentType
      * @param string          $specialNeedsLevel
-     * @param string          $RunY
+     * @param int             $RunY
      * @param array           $error
      *
      * @return void
      */
-    private function setPersonTblStudent(TblPerson $tblPerson, $Identification, $schoolAttendanceStartDate, $arriveDate, $arriveRemark,
-        $disease, $medication, $insurance, $religion, $enrollmentDate, $tblCompanyStammschule,
-        $schoolEnrollmentType, $specialNeedsLevel, $ForeignLanguage1, $ForeignLanguage2, $hasMigrationBackground, $MigrationBackground, $RunY, &$error)
+    private function setPersonTblStudent(TblPerson $tblPerson, string $Identification, string $schoolAttendanceStartDate, string $arriveDate,
+        string $arriveRemark, string $disease, string $medication, string $insurance, string $religion, string $enrollmentDate,
+        ?TblCompany $tblCompanyStammschule, string $schoolEnrollmentType, string $specialNeedsLevel, string $ForeignLanguage1, string $ForeignLanguage2,
+        string $hasMigrationBackground, string $MigrationBackground, int $RunY, array &$error)
     {
         // controll conform DateTime string
         $schoolAttendanceStartDate = $this->checkDate($schoolAttendanceStartDate, 'Ungültiges Schulpflichtbeginn-Datum:', $RunY, $error);
@@ -1522,14 +1519,14 @@ class Service
     }
 
     /**
-     * @param $Date
-     * @param $ErrorMessage
-     * @param $RunY
-     * @param $error
-     *
-     * @return false|string
+     * @param string $Date
+     * @param string $ErrorMessage
+     * @param int $RunY
+     * @param array $error
+     * 
+     * @return string
      */
-    private function checkDate($Date, $ErrorMessage, $RunY, &$error)
+    private function checkDate(string $Date, string $ErrorMessage, int $RunY, array &$error): string
     {
 
         $result = '';
@@ -1562,20 +1559,16 @@ class Service
      * @param string $titel
      * @param string $firstName
      * @param string $lastName
-     * @param string $teacher
-//     * @param bool   $isStaff
      *
-     * @return bool|TblPerson
+     * @return TblPerson
      */
-    private function setPersonStaff($salutation, $titel, $firstName, $lastName, $teacher) // $isStaff = true
+    private function setPersonStaff(string $salutation, string $titel, string $firstName, string $lastName, string $BirthName): tblPerson
     {
 
         $GroupList = array();
         $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_COMMON);
         $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STAFF);
-        if(strtoupper($teacher) === 'X'){
-            $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TEACHER);
-        }
+        $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TEACHER);
 
         $tblSalutation = false;
         if($salutation){
@@ -1600,26 +1593,21 @@ class Service
             $firstName,
             '',
             $lastName,
-            $GroupList
+            $GroupList,
+            $BirthName
         );
     }
 
     /**
      * @param TblPerson $tblPerson
-     * @param bool      $isTeacher
-     * @param bool      $isStaff
+     * @return void
      */
-    private function setGroupStaff(TblPerson $tblPerson, $isTeacher = true, $isStaff = true)
+    private function setGroupStaff(TblPerson $tblPerson): void
     {
 
         $GroupList = array();
-        if($isStaff){
-            $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STAFF);
-        }
-        if($isTeacher){
-            $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TEACHER);
-        }
-
+        $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_STAFF);
+        $GroupList[] = Group::useService()->getGroupByMetaTable(TblGroup::META_TABLE_TEACHER);
         // Add to Group
         if (!empty( $GroupList )) {
             foreach ($GroupList as $tblGroup) {
@@ -1638,10 +1626,10 @@ class Service
      *
      * @param string $rawValue roher Feldinhalt, z.B. $this->getValue('TelefaxBezPers1')
      *
-     * @return array|false  array('Number' => string, 'IsMobile' => bool, 'Remark' => string)
+     * @return false|array  array('Number' => string, 'IsMobile' => bool, 'Remark' => string)
      *                       oder false, wenn kein Wert vorhanden ist
      */
-    private function parsePhoneField($rawValue)
+    private function parsePhoneField(string $rawValue): bool|array
     {
         $rawValue = trim((string)$rawValue);
         if ($rawValue === '') {
@@ -1678,28 +1666,28 @@ class Service
     }
 
     /**
-     * @param string $nationality
+     * @param string $Nationality
      *
      * @return string
      */
-    private function replaceNationality($nationality)
+    private function replaceNationality(string $Nationality): string
     {
 
         $mapping = $this->Nation;
-        $key = trim($nationality);
+        $key = trim($Nationality);
         if (isset($mapping[$key])) {
             return $mapping[$key];
         }
 
-        return $nationality;
+        return $Nationality;
     }
 
     /**
-     * @param $nationality
+     * @param string $Subject
      *
-     * @return void
+     * @return string
      */
-    private function replaceSubjectForeign($Subject)
+    private function replaceSubjectForeign(string $Subject): string
     {
         $mapping = $this->Subject;
         $key = trim($Subject);
@@ -1711,16 +1699,53 @@ class Service
     }
 
     /**
-     * @param $nationality
+     * @param string $Religion
      *
-     * @return void
+     * @return string
      */
-    private function replaceSubjectReligion($Religion)
+    private function replaceSubjectReligion(string $Religion): string
     {
         $mapping = $this->Religion;
         $key = trim($Religion);
         if (isset($mapping[$key])) {
             return $mapping[$key];
         }
+
+        return $Religion;
+    }
+
+    /**
+     * Trennt eine Adresse in Straße und Hausnummer.
+     *
+     * Unterstützt Formate wie:
+     *  - "18/1"
+     *  - "9-1"
+     *  - "8"
+     *  - "12a"
+     *  - "12 a"
+     *
+     * @param string $adresse
+     * @return array{strasse: string, hausnummer: ?string}
+     */
+    function splitStreetAndNumber(string $adresse): array
+    {
+        $adresse = trim($adresse);
+
+        // Lazy-Match: nimmt so wenig wie möglich als "Straße",
+        // bis der Rest komplett als Hausnummer-Muster passt.
+        $pattern = '/^(.+?)\s+(\d+[a-zA-Z]?(?:[\/\-]\d+[a-zA-Z]?)?)$/u';
+
+        if (preg_match($pattern, $adresse, $matches)) {
+            return [
+                'street'    => trim($matches[1]),
+                'number' => trim($matches[2]),
+            ];
+        }
+
+        // Kein Match -> keine Hausnummer gefunden
+        return [
+            'street'    => $adresse,
+            'number' => '',
+        ];
     }
 }
