@@ -427,7 +427,7 @@ class Frontend extends Extension implements IFrontendInterface
                                 .new PullRight(new External('Download PDF', '/Api/Document/Standard/RadarChart/Create', new Download())))
                                 .(new RadarChart($RadarChartLabelList, $RadarChartValueList, 3.5))->setRingCount(7)
                             , 4),
-                            new LayoutColumn('Platz wird anhand der Breite vorgegeben. umbrüche auch mit "\\n" möglich.<br/>Aktuell sinnvoll max 2 Zeilen vorgesehen'
+                            new LayoutColumn('Platz wird anhand der Breite vorgegeben. umbrüche auch mit "\\n" möglich.<br/>Aktuell sinnvoll max 2 Zeilen vorgesehen. Hier getImage() verwendet'
                                 .(new RadarChart($RadarChartLabelList2, $RadarChartValueList2, 15))
                                 ->setColor('#DD6688')
                             ->getImage()

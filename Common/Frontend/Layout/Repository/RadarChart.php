@@ -44,6 +44,9 @@ class RadarChart extends Extension implements ITemplateInterface
     private int $FontSize = 11;
     /** @var int $ScaleSize Schriftgröße Skala (wird bei Schriftgröße mit gesetzt (-1)*/
     private int $ScaleSize = 10;
+    /** @var string $FontFamily Schriftart; muss im SVG selbst stehen, da ein als <img> eingebettetes
+     *   SVG die Seiten-CSS nicht erbt (sonst Fallback auf Serifenschrift/Times New Roman) */
+    private string $FontFamily = "Helvetica Neue, Helvetica, Arial, sans-serif";
 
     /**
      * @param string[]   $LabelList  Achsen-Beschriftungen
@@ -125,6 +128,17 @@ class RadarChart extends Extension implements ITemplateInterface
     }
 
     /**
+     * @param string $FontFamily CSS-Schriftliste; wird direkt ins SVG geschrieben
+     * @return $this
+     */
+    public function setFontFamily(string $FontFamily = "'Helvetica Neue', Helvetica, Arial, sans-serif"): RadarChart
+    {
+
+        $this->FontFamily = $FontFamily;
+        return $this;
+    }
+
+    /**
      * @param int $RingCount
      * @return $this
      */
@@ -168,12 +182,16 @@ class RadarChart extends Extension implements ITemplateInterface
         }
 
         $CenterX = $this->Width / 2;
-        $CenterY = $this->Height / 2;
         // Radius mit Rand für die Beschriftungen
         $Radius = (int)(min($this->Width, $this->Height) / 2) - $this->RadiusSpace; //- 35; // -65 Rand
+        // Vertikale Zentrierung: bei ungerader Achsenzahl (z. B. 3) ist die Figur oben/unten
+        // asymmetrisch (Spitze oben, Kante unten), wodurch sonst unten viel Platz frei bliebe.
+        // Bei gerader Achsenzahl ist der Versatz 0 -> keine Änderung.
+        $CenterY = $this->Height / 2 - $Radius * $this->getVerticalCenterOffset($Count);
 
         $Svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $this->Width . '" height="' . $this->Height . '"'
-            . ' viewBox="0 0 ' . $this->Width . ' ' . $this->Height . '">';
+            . ' viewBox="0 0 ' . $this->Width . ' ' . $this->Height . '"'
+            . ' font-family="' . $this->FontFamily . '">';
 
         // Gitterringe
         for ($Ring = 1; $Ring <= $this->RingCount; $Ring++) {
@@ -211,7 +229,8 @@ class RadarChart extends Extension implements ITemplateInterface
             $Value = $ScaleInner + ($ScaleOuter - $ScaleInner) * $Fraction;
             $LabelY = $CenterY - $Radius * $Fraction + 3;
             $Svg .= '<text x="' . $this->format($CenterX + 3) . '" y="' . $this->format($LabelY) . '"'
-                . ' font-size="'.$this->ScaleSize.'" fill="#555555">' . $this->getGermanNumber($Value) . '</text>'; // fill="#a8a69c"
+                . ' font-family="' . $this->FontFamily . '" font-size="'.$this->ScaleSize.'" fill="#555555">'
+                . $this->getGermanNumber($Value) . '</text>'; // fill="#a8a69c"
         }
 
         // Werte-Punkte
@@ -263,6 +282,34 @@ class RadarChart extends Extension implements ITemplateInterface
             $CenterX + $Radius * cos($Angle),
             $CenterY + $Radius * sin($Angle)
         );
+    }
+
+    /**
+     * Vertikaler Versatz (Anteil vom Radius), um die Figur mittig zu setzen.
+     *
+     * Die Eckpunkte liegen bei sin(-90° + i*360°/n); Mitte der vertikalen Ausdehnung
+     * ist (min(sin) + max(sin)) / 2. Bei gerader Achsenzahl ergibt das 0 (symmetrisch),
+     * bei ungerader (z. B. 3) einen negativen Wert -> CenterY wird nach unten geschoben.
+     *
+     * @param int $Count
+     *
+     * @return float
+     */
+    private function getVerticalCenterOffset($Count)
+    {
+
+        $MinSin = 1.0;
+        $MaxSin = -1.0;
+        for ($Index = 0; $Index < $Count; $Index++) {
+            $Sin = sin(-M_PI / 2 + $Index * 2 * M_PI / $Count);
+            if ($Sin < $MinSin) {
+                $MinSin = $Sin;
+            }
+            if ($Sin > $MaxSin) {
+                $MaxSin = $Sin;
+            }
+        }
+        return ($MinSin + $MaxSin) / 2;
     }
 
     /**
@@ -359,7 +406,8 @@ class RadarChart extends Extension implements ITemplateInterface
         foreach ($Lines as $LineIndex => $Line) {
             $LineY = $PositionY + $LineIndex * $this->FontSize - ($LineCount - 1) * 5;
             $Svg .= '<text x="' . $this->format($PositionX) . '" y="' . $this->format($LineY) . '"'
-                . ' font-size="'.$this->FontSize.'" fill="#52514e" text-anchor="' . $Anchor . '">'
+                . ' font-family="' . $this->FontFamily . '" font-size="'.$this->FontSize.'"'
+                . ' fill="#52514e" text-anchor="' . $Anchor . '">'
                 . $this->escape($Line) . '</text>';
         }
         return $Svg;
