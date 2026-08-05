@@ -24,6 +24,7 @@ use SPHERE\Application\Api\Document\Standard\Repository\Gradebook\Gradebook;
 use SPHERE\Application\Api\Document\Standard\Repository\GradebookOverview;
 use SPHERE\Application\Api\Document\Standard\Repository\MultiPassword\MultiPassword;
 use SPHERE\Application\Api\Document\Standard\Repository\PasswordChange\PasswordChange;
+use SPHERE\Application\Api\Document\Standard\Repository\RadarChart\RadarChart;
 use SPHERE\Application\Api\Document\Standard\Repository\SignInCertificate\SignInCertificate;
 use SPHERE\Application\Api\Document\Standard\Repository\SignOutCertificate\SignOutCertificate;
 use SPHERE\Application\Api\Document\Standard\Repository\StaffAccidentReport\StaffAccidentReportBE;
@@ -81,6 +82,25 @@ class Creator extends Extension
 {
     const PAPERORIENTATION_PORTRAIT = 'PORTRAIT';
     const PAPERORIENTATION_LANDSCAPE = 'LANDSCAPE';
+
+    /**
+     * Test: PDF mit einem Netzdiagramm.
+     *
+     * @param array $Data optional: 'Labels', 'Values', 'Max'
+     *
+     * @return Stage|string
+     */
+    public static function createTestRadarChartPdf($Data = array())
+    {
+
+        $Document = new RadarChart($Data);
+
+        $File = self::buildDummyFile($Document, array(), array(), self::PAPERORIENTATION_PORTRAIT);
+        $FileName = $Document->getName() . ' ' . date("Y-m-d") . ".pdf";
+
+        return self::buildDownloadFile($File, $FileName);
+    }
+
     /**
      * @param null   $PersonId
      * @param string $DocumentClass

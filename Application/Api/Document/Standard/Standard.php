@@ -81,6 +81,9 @@ class Standard extends Extension implements IModuleInterface
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/Manual/Create/Pdf', 'SPHERE\Application\Api\Document\Creator::createManualPdf'
         ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(  // Download Frontend Testseite
+            __NAMESPACE__.'/RadarChart/Create', 'SPHERE\Application\Api\Document\Creator::createTestRadarChartPdf'
+        ));
 //        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
 //            __NAMESPACE__.'/Manual/Create/xlsx', 'SPHERE\Application\Api\Document\Creator::createManualExcel'
 //        ));

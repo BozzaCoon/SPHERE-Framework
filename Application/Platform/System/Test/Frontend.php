@@ -33,6 +33,7 @@ use SPHERE\Common\Frontend\Form\Structure\FormColumn;
 use SPHERE\Common\Frontend\Form\Structure\FormGroup;
 use SPHERE\Common\Frontend\Form\Structure\FormRow;
 use SPHERE\Common\Frontend\Icon\Repository\Check;
+use SPHERE\Common\Frontend\Icon\Repository\Download;
 use SPHERE\Common\Frontend\Icon\Repository\Edit;
 use SPHERE\Common\Frontend\Icon\Repository\EyeOpen;
 use SPHERE\Common\Frontend\Icon\Repository\Lock;
@@ -52,6 +53,7 @@ use SPHERE\Common\Frontend\Layout\Repository\ProgressBar;
 use SPHERE\Common\Frontend\Layout\Repository\PullClear;
 use SPHERE\Common\Frontend\Layout\Repository\PullLeft;
 use SPHERE\Common\Frontend\Layout\Repository\PullRight;
+use SPHERE\Common\Frontend\Layout\Repository\RadarChart;
 use SPHERE\Common\Frontend\Layout\Repository\Thumbnail;
 use SPHERE\Common\Frontend\Layout\Repository\Title;
 use SPHERE\Common\Frontend\Layout\Repository\Well;
@@ -210,6 +212,30 @@ class Frontend extends Extension implements IFrontendInterface
         $Editor = array('Description' => 'Feldobjekt' ,'first' => 'Editor', 'second' => 'Editor 2', 'third' => 'Text Area', 'fourth' => 'Text Filed');$TableEditorList[] = $Editor;
         $Editor = array('Description' => 'Verhalten' ,'first' => 'behält HTML Tags', 'second' => 'behält HTML Tags', 'third' => 'trimt die HTML Tags weg', 'fourth' => 'trimt die HTML Tags weg');$TableEditorList[] = $Editor;
 
+        // Test: Netzdiagramm der überfachlichen Kompetenzen (Demo-Daten)
+        // Beschriftung, Werte und Achsenanzahl ergeben sich vollständig aus den Arrays
+        // und sind später je Schüler dynamisch. Ausgabe ist reines SVG (Browser + DomPdf).
+        $RadarChartLabelList = array(
+            "Netzdiagramm mit unterschiedlichen Paramtern",
+            "Lern- und Einsatzbereitschaft",
+            "Selbstorganisation",
+            "Problemlösefähigkeit",
+            "Zuverlässigkeit und\nVerantwortungsübernahme",
+            "Kooperations- und\nTeamfähigkeit",
+            "Kommunikations- und\nKonfliktfähigkeit",
+        );
+        $RadarChartValueList = array(3.5, 2, 3, 2, 2.5, 3, 2);
+        $RadarChartLabelList2 = array("Mathematik", "0 Test", "Biologie");
+        $RadarChartValueList2 = array(15, 0, 4);
+        $RadarChartLabelList3 = array(
+            "Mitarbeit",
+            "Fleiß",
+            "Ordnung",
+            "Pünktlichkeit\nTest Umbruch\nRadius erweitert mehr Zeilen möglich",
+            "Sauberkeit\n1\n2\n3\ngeht mit Platz",
+            "Freundlichkeit\nund so"
+        );
+        $RadarChartValueList3 = array(2, 1, 6, 2, 3, 4);
         $Stage->setContent(
             new Layout(new LayoutGroup(array(
                 new LayoutRow(array(
@@ -393,8 +419,28 @@ class Frontend extends Extension implements IFrontendInterface
                             new RadioBox('RadioBox2', 'RadioBox2b', '2b'),
                             new RadioBox('RadioBox3', 'RadioBox3b', '3b'),
                         ), 2),
-
-
+                    )),
+                    new FormRow(new FormColumn(new InfoText('<hr>'))),
+                    new FormRow(array(
+                        new FormColumn(new Layout(new LayoutGroup(new LayoutRow(array(
+                            new LayoutColumn(new PullClear('Netzdiagramm parametrisiert (RadarChart)'
+                                .new PullRight(new External('Download PDF', '/Api/Document/Standard/RadarChart/Create', new Download())))
+                                .(new RadarChart($RadarChartLabelList, $RadarChartValueList, 3.5))->setRingCount(7)
+                            , 4),
+                            new LayoutColumn('Platz wird anhand der Breite vorgegeben. umbrüche auch mit "\\n" möglich.<br/>Aktuell sinnvoll max 2 Zeilen vorgesehen'
+                                .(new RadarChart($RadarChartLabelList2, $RadarChartValueList2, 15))
+                                ->setColor('#DD6688')
+                            ->getImage()
+                            , 4),
+                            new LayoutColumn(new Bold('Parameter construct:').' LabelList, ValueList, höchste Zahl, Breite, Höhe<br/>'
+                                    .new Bold('Parameter separat:').' Inverted, FontSize, Color, RingCount(automatismus), RadiusSpace<br/>'.(new RadarChart($RadarChartLabelList3, $RadarChartValueList3, 6))
+                                ->setInverted()
+                                ->setFontSize(16)
+                                ->setColor('#33BBBB')
+                                ->setRadiusSpace(44)
+                            , 4)
+                        ))))
+                        , 12),
                     )),
                     new FormRow(new FormColumn(new InfoText('<hr>'))),
                     new FormRow(array(
