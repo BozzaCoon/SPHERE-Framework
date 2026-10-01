@@ -58,7 +58,7 @@ class Frontend extends Extension implements IFrontendInterface
         // ToDO Empfehlung die Geräte zu benennen? -> müsste wahrscheinlich immer angezeigt werden
 
         $info = new Container('- Nicht mehr genutzte Geräte entfernen')
-        .new Container('- Gerät sperren, um zukünftige Login von diesem Gerät zu unterbinden');
+            .new Container('- Gerät blockieren, um zukünftige Login von diesem Gerät zu unterbinden');
         $Stage->setMessage($info);
 
         $Stage->setContent(

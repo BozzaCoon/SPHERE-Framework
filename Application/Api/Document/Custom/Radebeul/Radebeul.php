@@ -31,6 +31,12 @@ class Radebeul extends Extension implements IModuleInterface
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/AuthorizedToCollect/CreateMulti', __CLASS__.'::createAuthorizedToCollectMultiPdf'
         ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/StudentBusinessCard/Create', __CLASS__.'::createStudentBusinessCardPdf'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/StudentBusinessCard/CreateMulti', __CLASS__.'::createStudentBusinessCardMultiPdf'
+        ));
     }
 
     /**
@@ -98,5 +104,26 @@ class Radebeul extends Extension implements IModuleInterface
     public static function createAuthorizedToCollectMultiPdf($DivisionCourseId = null)
     {
         return Creator::createMultiPdf($DivisionCourseId, __NAMESPACE__.'\Repository\AuthorizedToCollect');
+    }
+
+    /**
+     * @param null $PersonId
+     *
+     * @return \SPHERE\Common\Window\Stage|string
+     */
+    public static function createStudentBusinessCardPdf($PersonId = null)
+    {
+
+        return Creator::createPdf($PersonId, __NAMESPACE__.'\Repository\StudentBusinessCard');
+    }
+
+    /**
+     * @param $DivisionCourseId
+     *
+     * @return Stage|string
+     */
+    public static function createStudentBusinessCardMultiPdf($DivisionCourseId = null)
+    {
+        return Creator::createMultiPdf($DivisionCourseId, __NAMESPACE__.'\Repository\StudentBusinessCard');
     }
 }

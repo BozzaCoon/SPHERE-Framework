@@ -50,6 +50,9 @@ class Radebeul extends AbstractModule implements IModuleInterface
         Main::getDisplay()->addModuleNavigation(
             new Link(new Link\Route(__NAMESPACE__.'/AuthorizedToCollect'), new Link\Name('Abholvollmacht'))
         );
+        Main::getDisplay()->addModuleNavigation(
+            new Link(new Link\Route(__NAMESPACE__.'/StudentBusinessCard'), new Link\Name('Schüler Ausweis'))
+        );
 
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/StudentCard', __CLASS__.'::frontendSelectPerson'
@@ -65,6 +68,12 @@ class Radebeul extends AbstractModule implements IModuleInterface
         ));
         Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
             __NAMESPACE__.'/AuthorizedToCollect/Division', __CLASS__.'::frontendSelectAuthorizedToCollectDivision'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/StudentBusinessCard', __CLASS__.'::frontendSelectStudentBusinessCard'
+        ));
+        Main::getDispatcher()->registerRoute(Main::getDispatcher()->createRoute(
+            __NAMESPACE__.'/StudentBusinessCard/Division', __CLASS__.'::frontendSelectStudentBusinessCardDivision'
         ));
     }
 
@@ -328,6 +337,119 @@ class Radebeul extends AbstractModule implements IModuleInterface
     }
 
     /**
+     * @return Stage
+     */
+    public static function frontendSelectStudentBusinessCard(): Stage
+    {
+        $Stage = new Stage('Schüler Ausweis', 'Schüler auswählen');
+        self::setButtonList($Stage, '/Document/Custom/Radebeul/StudentBusinessCard');
+
+        $dataList = array();
+        $showDivision = false;
+//        $showCoreGroup = false;
+        if (($tblGroup = Group::useService()->getGroupByMetaTable('STUDENT'))
+            && ($tblPersonList = Group::useService()->getPersonAllByGroup($tblGroup))
+        ) {
+            foreach ($tblPersonList as $tblPerson) {
+                $displayDivision = '';
+                $displayCoreGroup = '';
+                if (($tblStudentEducation = DivisionCourse::useService()->getStudentEducationByPersonAndDate($tblPerson))){
+                    if (($tblDivision = $tblStudentEducation->getTblDivision())
+                        && ($displayDivision = $tblDivision->getName())
+                    ) {
+                        $showDivision = true;
+                    }
+                    if (($tblCoreGroup = $tblStudentEducation->getTblCoreGroup())
+                        && ($displayCoreGroup = $tblCoreGroup->getName())
+                    ) {
+                        $showCoreGroup = true;
+                    }
+                }
+                $tblAddress = $tblPerson->fetchMainAddress();
+                $dataList[] = array(
+                    'Name'     => $tblPerson->getLastFirstName(),
+                    'Address'  => $tblAddress ? $tblAddress->getGuiString() : '',
+                    'Division' => $displayDivision,
+                    'CoreGroup' => $displayCoreGroup,
+                    'Option'   => new External(
+                        'Herunterladen',
+                        'SPHERE\Application\Api\Document\Custom\Radebeul\StudentBusinessCard\Create',
+                        new Download(),
+                        array(
+                            'PersonId' => $tblPerson->getId(),
+                        ),
+                        'Schülerausweis herunterladen'
+                    )
+                );
+            }
+        }
+
+        $columnList['Name'] = 'Name';
+        $columnList['Address'] = 'Adresse';
+        if ($showDivision) {
+            $columnList['Division'] = 'Klasse';
+        }
+        if ($showCoreGroup) {
+            $columnList['CoreGroup'] = 'Stammgruppe';
+        }
+        $columnList['Option'] = '';
+
+        $Stage->setContent(
+            new Layout(array(
+                new LayoutGroup(array(
+                    new LayoutRow(array(
+                        new LayoutColumn(array(
+                            new TableData(
+                                $dataList,
+                                null,
+                                $columnList,
+                                array(
+                                    "columnDefs" => array(
+                                        array('type' => Consumer::useService()->getGermanSortBySetting(), 'targets' => 0),
+                                        array('orderable' => false, 'width' => '60px', 'targets' => -1),
+                                    ),
+                                )
+                            )
+                        )),
+                    ))
+                )),
+            ))
+        );
+
+        return $Stage;
+    }
+
+    /**
+     * @param bool $IsAllYears
+     * @param string|null $YearId
+     *
+     * @return Stage
+     */
+    public static function frontendSelectStudentBusinessCardDivision(bool $IsAllYears = false, ?string $YearId = null): Stage
+    {
+        $Stage = new Stage('Schüler Ausweis', 'Kurs auswählen');
+        self::setButtonList($Stage, '/Document/Custom/Radebeul/StudentBusinessCard');
+
+        $Route = '/Document/Custom/Radebeul/StudentBusinessCard/Division';
+        list($yearButtonList, $filterYearList)
+            = Term::useFrontend()->getYearButtonsAndYearFilters($Route, $IsAllYears, $YearId);
+
+        $Stage->setContent(
+            new Layout(
+                new LayoutGroup(array(
+                    new LayoutRow(new LayoutColumn(
+                        empty($yearButtonList) ? '' : $yearButtonList
+                    )),
+                    new LayoutRow(array(
+                        new LayoutColumn(self::loadDivisionTable($filterYearList, 'StudentBusinessCard'))
+                    )), new Title(new Listing() . ' Übersicht')
+                ))
+            ));
+
+        return $Stage;
+    }
+
+    /**
      * @param array|null $filterYearList
      *
      * @return TableData
@@ -364,12 +486,16 @@ class Radebeul extends AbstractModule implements IModuleInterface
             $count = $tblDivisionCourse->getCountStudents();
             $option = '';
             if ($count > 0) {
-                if($Type == 'StudentCard') {
+                if ($Type == 'StudentCard') {
                     $option = new External('Herunterladen', '/Api/Document/Custom/Radebeul/StudentCard/CreateMulti', new Download(),
                         array('DivisionCourseId' => $tblDivisionCourse->getId()), 'Schülerkarteien herunterladen');
-                }elseif($Type == 'AuthorizedToCollect')
+                } elseif ($Type == 'AuthorizedToCollect') {
                     $option = new External('Herunterladen', '/Api/Document/Custom/Radebeul/AuthorizedToCollect/CreateMulti', new Download(),
                         array('DivisionCourseId' => $tblDivisionCourse->getId()), 'Abholvollmacht herunterladen');
+                } elseif ($Type == 'StudentBusinessCard') {
+                    $option = new External('Herunterladen', '/Api/Document/Custom/Radebeul/StudentBusinessCard/CreateMulti', new Download(),
+                        array('DivisionCourseId' => $tblDivisionCourse->getId()), 'Schülerausweis herunterladen');
+                }
             }
 
             $dataList[] = array(

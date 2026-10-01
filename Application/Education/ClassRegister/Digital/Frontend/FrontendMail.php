@@ -28,6 +28,7 @@ use SPHERE\Common\Frontend\Layout\Structure\Layout;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutColumn;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutGroup;
 use SPHERE\Common\Frontend\Layout\Structure\LayoutRow;
+use SPHERE\Common\Frontend\Link\Repository\CopyButton;
 use SPHERE\Common\Frontend\Link\Repository\Primary;
 use SPHERE\Common\Frontend\Message\Repository\Warning;
 use SPHERE\Common\Frontend\Text\Repository\Bold;
@@ -177,7 +178,7 @@ class FrontendMail extends FrontendForgotten
 
                 return $layout .
                     new Primary('Im E-Mail-Programm als BCC öffnen', 'mailto:;?bcc=' . $mails, new Extern())
-                    . new Title('Oder zum Kopieren ins BCC-Feld')
+                    . new Title('Oder zum Kopieren ins BCC-Feld &nbsp;'. new CopyButton($mails))
                     . new Well($mails)
                     ;
             } else {

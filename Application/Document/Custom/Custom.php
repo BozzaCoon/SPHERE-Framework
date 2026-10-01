@@ -31,7 +31,7 @@ class Custom implements IApplicationInterface
             if ($consumerAcronym === 'LWSZ') {
                 Lebenswelt::registerModule();
             }
-            if ($consumerAcronym === 'EVSR') {
+            if ($consumerAcronym === 'EVSR'|| $consumerAcronym === 'REF') {
                 Radebeul::registerModule();
             }
             if ($consumerAcronym === 'CMS') {
